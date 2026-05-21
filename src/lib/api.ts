@@ -1,4 +1,4 @@
-const BASE = (import.meta.env.VITE_API_BASE_URL ?? '') + '/api';
+const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') + '/api';
 
 export type EmployeeType = 'contract' | 'intern' | 'part';
 export type EmployeePriority = 'high' | 'medium' | 'low';
