@@ -11,6 +11,7 @@
   let editForm = $state({ startTime: '', endTime: '', note: '' });
 
   const DAY_NAMES = ['日','月','火','水','木','金','土'];
+  // DAY_SHORT は下で定義
 
   onMount(() => loadSchedule());
   $effect(() => { $selectedYear; $selectedMonth; loadSchedule(); });
@@ -48,6 +49,7 @@
     } catch { showToast('更新に失敗しました', 'error'); }
   }
 
+
   let daysInMonth = $derived(getDaysInMonth($selectedYear, $selectedMonth));
   let firstDay = $derived(new Date($selectedYear, $selectedMonth - 1, 1).getDay());
   let cells = $derived([
@@ -58,6 +60,25 @@
     })),
   ]);
   let selectedSlots = $derived(selectedDate ? getSlotsForDate(selectedDate) : []);
+
+  // 印刷用: 全日付リスト
+  let printDays = $derived(
+    Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const date = getDateString($selectedYear, $selectedMonth, day);
+      const dow = new Date($selectedYear, $selectedMonth - 1, day).getDay();
+      return { day, date, dow };
+    })
+  );
+
+  // 印刷用: シフトがある従業員のみ
+  let printEmployees = $derived(
+    $employees.filter(emp => schedule?.slots.some(s => s.employeeId === emp.id))
+  );
+
+  function getSlot(empId: string, date: string) {
+    return schedule?.slots.find(s => s.employeeId === empId && s.date === date) ?? null;
+  }
 
   function printSchedule() {
     window.print();
@@ -86,7 +107,55 @@
     </div>
   </div>
 
-  <div class="print-title" style="display:none">{$selectedYear}年{$selectedMonth}月 シフト表</div>
+  <!-- 印刷専用レイアウト -->
+  <div class="print-only">
+    <div class="print-header">
+      <h1>{$selectedYear}年{$selectedMonth}月 シフト表</h1>
+    </div>
+    <table class="print-table">
+      <thead>
+        <tr>
+          <th class="name-col">氏名</th>
+          {#each printDays as d}
+            <th class="day-col {d.dow === 0 ? 'sun' : d.dow === 6 ? 'sat' : ''}">
+              <div>{d.day}</div>
+              <div class="dow">{DAY_NAMES[d.dow]}</div>
+            </th>
+          {/each}
+        </tr>
+      </thead>
+      <tbody>
+        {#each printEmployees as emp}
+          <tr>
+            <td class="name-cell">
+              <span class="emp-dot" style="background:{emp.color}"></span>
+              {emp.name}
+            </td>
+            {#each printDays as d}
+              {@const slot = getSlot(emp.id, d.date)}
+              <td class="shift-cell {d.dow === 0 ? 'sun-bg' : d.dow === 6 ? 'sat-bg' : ''}">
+                {#if slot}
+                  <div class="shift-bar" style="background:{emp.color}">
+                    <span>{slot.startTime}</span>
+                    <span>〜</span>
+                    <span>{slot.endTime}</span>
+                  </div>
+                {/if}
+              </td>
+            {/each}
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+    <div class="print-legend">
+      {#each printEmployees as emp}
+        <span class="legend-item">
+          <span class="emp-dot" style="background:{emp.color}"></span>
+          {emp.name}
+        </span>
+      {/each}
+    </div>
+  </div>
 
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
     <div class="grid grid-cols-7 border-b border-gray-100">
@@ -122,20 +191,107 @@
 </div>
 
 <style>
+  /* 印刷専用ブロックは通常時は非表示 */
+  .print-only { display: none; }
+
   @media print {
+    /* サイドバー・操作UI・モーダルを消す */
+    :global(aside), :global(.fixed) { display: none !important; }
+    :global(main) { margin-left: 0 !important; }
     :global(body) { background: white !important; }
-    :global(aside) { display: none !important; }
-    :global(main.ml-64) { margin-left: 0 !important; }
-    :global(.fixed) { display: none !important; }
+
+    /* 通常カレンダーと操作UIを非表示 */
     .no-print { display: none !important; }
-    .print-title {
+    :global(.bg-white.rounded-2xl) { display: none !important; }
+    :global(.p-8) > :not(.print-only) { display: none !important; }
+
+    /* 印刷専用レイアウトを表示 */
+    .print-only {
       display: block !important;
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 8px;
+      font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      font-size: 10px;
       color: #111;
     }
-    :global(.min-h-28) { min-height: 80px !important; }
+
+    .print-header h1 {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      padding-bottom: 4px;
+      border-bottom: 2px solid #333;
+    }
+
+    .print-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .print-table th, .print-table td {
+      border: 1px solid #ccc;
+      padding: 2px 1px;
+      text-align: center;
+      vertical-align: middle;
+      overflow: hidden;
+    }
+
+    .name-col { width: 52px; text-align: left; padding-left: 4px; font-weight: bold; background: #f5f5f5; }
+    .day-col { font-size: 9px; font-weight: bold; background: #f5f5f5; }
+    .day-col .dow { font-size: 8px; color: #555; }
+    .day-col.sun, .day-col.sun .dow { color: #dc2626; }
+    .day-col.sat, .day-col.sat .dow { color: #2563eb; }
+
+    .name-cell {
+      text-align: left;
+      padding-left: 4px;
+      font-weight: 600;
+      white-space: nowrap;
+      font-size: 9px;
+    }
+
+    .shift-cell { padding: 1px; height: 28px; }
+    .shift-cell.sun-bg { background: #fff5f5; }
+    .shift-cell.sat-bg { background: #eff6ff; }
+
+    .shift-bar {
+      border-radius: 2px;
+      color: white;
+      font-size: 7.5px;
+      font-weight: bold;
+      padding: 1px 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1.2;
+      height: 100%;
+      justify-content: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .emp-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-right: 3px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .print-legend {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 9px;
+    }
+    .legend-item { display: flex; align-items: center; }
+
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
   }
 </style>
 
