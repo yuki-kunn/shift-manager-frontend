@@ -58,18 +58,35 @@
     })),
   ]);
   let selectedSlots = $derived(selectedDate ? getSlotsForDate(selectedDate) : []);
+
+  function printSchedule() {
+    window.print();
+  }
 </script>
 
 <div class="p-8">
-  <div class="mb-6 flex items-center justify-between">
+  <div class="mb-6 flex items-center justify-between no-print">
     <div>
       <h1 class="text-2xl font-bold text-gray-900">{$selectedYear}年{$selectedMonth}月 カレンダー</h1>
       <p class="text-gray-500 mt-1">シフト表の確認・微調整</p>
     </div>
-    {#if !schedule}
-      <p class="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">シフト未生成。ダッシュボードで生成してください。</p>
-    {/if}
+    <div class="flex items-center gap-3">
+      {#if !schedule}
+        <p class="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">シフト未生成。ダッシュボードで生成してください。</p>
+      {/if}
+      {#if schedule}
+        <button onclick={printSchedule}
+          class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all shadow-sm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+          </svg>
+          PDFで保存
+        </button>
+      {/if}
+    </div>
   </div>
+
+  <div class="print-title" style="display:none">{$selectedYear}年{$selectedMonth}月 シフト表</div>
 
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
     <div class="grid grid-cols-7 border-b border-gray-100">
@@ -103,6 +120,24 @@
     </div>
   </div>
 </div>
+
+<style>
+  @media print {
+    :global(body) { background: white !important; }
+    :global(aside) { display: none !important; }
+    :global(main.ml-64) { margin-left: 0 !important; }
+    :global(.fixed) { display: none !important; }
+    .no-print { display: none !important; }
+    .print-title {
+      display: block !important;
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #111;
+    }
+    :global(.min-h-28) { min-height: 80px !important; }
+  }
+</style>
 
 {#if selectedDate}
   <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
