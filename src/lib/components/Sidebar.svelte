@@ -1,6 +1,9 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { selectedYear, selectedMonth } from '$lib/stores.js';
+  import { selectedYear, selectedMonth, auth, logout } from '$lib/stores.js';
+  import { goto } from '$app/navigation';
+
+  function handleLogout() { logout(); goto('/login'); }
 
   const navItems = [
     { href: '/', label: 'ダッシュボード', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -17,14 +20,17 @@
 
 <aside class="w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 z-40">
   <div class="px-6 py-5 border-b border-gray-100">
-    <div class="flex items-center gap-2">
-      <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+    <div class="flex items-center gap-2 mb-1">
+      <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
         <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
         </svg>
       </div>
       <span class="font-bold text-gray-900 text-lg">Shift Manager</span>
     </div>
+    {#if $auth?.facilityName}
+      <p class="text-xs text-indigo-600 font-medium mt-1 pl-10">{$auth.facilityName}</p>
+    {/if}
   </div>
 
   <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -52,5 +58,12 @@
         {#each months as m}<option value={m}>{m}月</option>{/each}
       </select>
     </div>
+    <button onclick={handleLogout}
+      class="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-gray-400 hover:text-red-500 transition-colors">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+      </svg>
+      ログアウト
+    </button>
   </div>
 </aside>

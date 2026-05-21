@@ -1,11 +1,6 @@
 import { writable } from 'svelte/store';
 import type { Employee, BusinessHours, Schedule } from './api.js';
 
-export const employees = writable<Employee[]>([]);
-export const businessHours = writable<BusinessHours | null>(null);
-export const currentSchedule = writable<Schedule | null>(null);
-export const toast = writable<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
 function persistedWritable<T>(key: string, initial: T) {
   const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
   const store = writable<T>(stored !== null ? JSON.parse(stored) : initial);
@@ -14,6 +9,24 @@ function persistedWritable<T>(key: string, initial: T) {
   });
   return store;
 }
+
+export interface AuthState {
+  token: string;
+  role: 'admin' | 'facility';
+  facilityId?: string;
+  facilityName?: string;
+}
+
+export const auth = persistedWritable<AuthState | null>('auth', null);
+
+export function logout() {
+  auth.set(null);
+}
+
+export const employees = writable<Employee[]>([]);
+export const businessHours = writable<BusinessHours | null>(null);
+export const currentSchedule = writable<Schedule | null>(null);
+export const toast = writable<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
 const now = new Date();
 export const selectedYear = persistedWritable('selectedYear', now.getFullYear());
