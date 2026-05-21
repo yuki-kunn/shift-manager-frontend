@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { employees, selectedYear, selectedMonth, showToast } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, showToast, businessHours } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { ShiftRequest } from '$lib/api.js';
   import { getDaysInMonth, EMPLOYEE_TYPE_LABELS, EMPLOYEE_TYPE_COLORS } from '$lib/utils.js';
@@ -22,7 +22,12 @@
   }
 
   const DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
-  const defaultDow = (): DayOfWeekSetting => ({ enabled: false, isAvailable: true, startTime: '', endTime: '' });
+  const defaultDow = (): DayOfWeekSetting => ({
+    enabled: false,
+    isAvailable: true,
+    startTime: $businessHours?.openTime ?? '',
+    endTime: $businessHours?.closeTime ?? '',
+  });
 
   let selectedEmployeeId = $state('');
   let saving = $state(false);
@@ -222,6 +227,12 @@
                     <div class="flex items-center gap-3 px-4 py-2.5">
                       <!-- 有効化チェック -->
                       <input type="checkbox" bind:checked={dow.enabled}
+                        onchange={() => {
+                          if (dow.enabled) {
+                            dow.startTime = $businessHours?.openTime ?? '';
+                            dow.endTime = $businessHours?.closeTime ?? '';
+                          }
+                        }}
                         class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"/>
                       <!-- 曜日ラベル -->
                       <span class="w-5 text-sm font-semibold flex-shrink-0
@@ -288,6 +299,12 @@
 
                           <label class="flex items-center gap-1.5 cursor-pointer">
                             <input type="checkbox" bind:checked={ex.isAvailable}
+                              onchange={() => {
+                                if (ex.isAvailable) {
+                                  ex.startTime = $businessHours?.openTime ?? '';
+                                  ex.endTime = $businessHours?.closeTime ?? '';
+                                }
+                              }}
                               class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"/>
                             <span class="text-xs text-gray-600">出勤可</span>
                           </label>
