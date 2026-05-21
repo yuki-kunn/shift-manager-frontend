@@ -11,7 +11,7 @@
   let editForm = $state({ startTime: '', endTime: '', note: '' });
 
   const DAY_NAMES = ['日','月','火','水','木','金','土'];
-  // DAY_SHORT は下で定義
+  const now = new Date();
 
   onMount(() => loadSchedule());
   $effect(() => { $selectedYear; $selectedMonth; loadSchedule(); });
@@ -92,6 +92,40 @@
       <p class="text-gray-500 mt-1">シフト表の確認・微調整</p>
     </div>
     <div class="flex items-center gap-3">
+      <!-- 年月切り替え -->
+      <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1 py-1 shadow-sm">
+        <button onclick={() => {
+            const d = new Date($selectedYear, $selectedMonth - 2);
+            selectedYear.set(d.getFullYear()); selectedMonth.set(d.getMonth() + 1);
+          }}
+          class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <select value={$selectedYear} onchange={(e) => selectedYear.set(Number((e.target as HTMLSelectElement).value))}
+          class="text-sm font-medium text-gray-700 bg-transparent focus:outline-none px-1">
+          {#each [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1] as y}
+            <option value={y}>{y}年</option>
+          {/each}
+        </select>
+        <select value={$selectedMonth} onchange={(e) => selectedMonth.set(Number((e.target as HTMLSelectElement).value))}
+          class="text-sm font-medium text-gray-700 bg-transparent focus:outline-none px-1">
+          {#each Array.from({length:12},(_,i)=>i+1) as m}
+            <option value={m}>{m}月</option>
+          {/each}
+        </select>
+        <button onclick={() => {
+            const d = new Date($selectedYear, $selectedMonth);
+            selectedYear.set(d.getFullYear()); selectedMonth.set(d.getMonth() + 1);
+          }}
+          class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+
       {#if !schedule}
         <p class="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">シフト未生成。ダッシュボードで生成してください。</p>
       {/if}

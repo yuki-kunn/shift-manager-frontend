@@ -4,9 +4,20 @@ import type { Employee, BusinessHours, Schedule } from './api.js';
 export const employees = writable<Employee[]>([]);
 export const businessHours = writable<BusinessHours | null>(null);
 export const currentSchedule = writable<Schedule | null>(null);
-export const selectedYear = writable<number>(new Date().getFullYear());
-export const selectedMonth = writable<number>(new Date().getMonth() + 1);
 export const toast = writable<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+function persistedWritable<T>(key: string, initial: T) {
+  const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  const store = writable<T>(stored !== null ? JSON.parse(stored) : initial);
+  store.subscribe(v => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(v));
+  });
+  return store;
+}
+
+const now = new Date();
+export const selectedYear = persistedWritable('selectedYear', now.getFullYear());
+export const selectedMonth = persistedWritable('selectedMonth', now.getMonth() + 1);
 
 export function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
   toast.set({ message, type });
