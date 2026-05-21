@@ -60,7 +60,7 @@ export const api = {
       fetchJson<{ success: boolean }>(`/schedules/${id}`, { method: 'DELETE' }),
   },
   ai: {
-    generateSchedule: (year: number, month: number) =>
-      fetchJson<Schedule>('/ai/generate-schedule', { method: 'POST', body: JSON.stringify({ year, month }) }),
+    generateSchedule: (year: number, month: number, note?: string) =>
+      fetchJson<Schedule>('/ai/generate-schedule', { method: 'POST', body: JSON.stringify({ year, month, note }) }),
   },
 };

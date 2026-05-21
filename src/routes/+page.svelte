@@ -7,6 +7,7 @@
 
   let schedule = $state<Schedule | null>(null);
   let generating = $state(false);
+  let generationNote = $state('');
 
   onMount(() => loadSchedule());
   $effect(() => { $selectedYear; $selectedMonth; loadSchedule(); });
@@ -22,7 +23,7 @@
   async function generateSchedule() {
     generating = true;
     try {
-      const s = await api.ai.generateSchedule($selectedYear, $selectedMonth);
+      const s = await api.ai.generateSchedule($selectedYear, $selectedMonth, generationNote || undefined);
       schedule = s;
       currentSchedule.set(s);
       showToast('シフトを生成しました！', 'success');
@@ -39,24 +40,34 @@
 </script>
 
 <div class="p-8">
-  <div class="mb-8 flex items-center justify-between">
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900">{$selectedYear}年{$selectedMonth}月 シフト概要</h1>
-      <p class="text-gray-500 mt-1">シフト管理ダッシュボード</p>
+  <div class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">{$selectedYear}年{$selectedMonth}月 シフト概要</h1>
+        <p class="text-gray-500 mt-1">シフト管理ダッシュボード</p>
+      </div>
     </div>
-    <button onclick={generateSchedule} disabled={generating}
-      class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
-      {#if generating}
-        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>AI生成中...
-      {:else}
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-        </svg>AIシフト生成
-      {/if}
-    </button>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex gap-4 items-end">
+      <div class="flex-1">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">シフト生成への備考・指示（任意）</label>
+        <textarea bind:value={generationNote} rows="2"
+          placeholder="例: ○○さんは今月シフトを減らしてください。△△と□□は同じ日に入れてください。"
+          class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-gray-300 resize-none"></textarea>
+      </div>
+      <button onclick={generateSchedule} disabled={generating}
+        class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0">
+        {#if generating}
+          <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>AI生成中...
+        {:else}
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>AIシフト生成
+        {/if}
+      </button>
+    </div>
   </div>
 
   <div class="grid grid-cols-3 gap-6 mb-8">
