@@ -3,13 +3,13 @@
   import { businessHours as bhStore, showToast } from '$lib/stores.js';
   import { api } from '$lib/api.js';
 
-  let form = $state({ openTime: '09:00', closeTime: '21:00', longShiftThreshold: 6 });
+  let form = $state({ openTime: '09:00', closeTime: '21:00', longShiftThreshold: 6, minStaff: 1 });
   let saving = $state(false);
 
   onMount(async () => {
     try {
       const bh = await api.settings.getBusinessHours();
-      form = { openTime: bh.openTime, closeTime: bh.closeTime, longShiftThreshold: bh.longShiftThreshold };
+      form = { openTime: bh.openTime, closeTime: bh.closeTime, longShiftThreshold: bh.longShiftThreshold, minStaff: bh.minStaff ?? 1 };
       bhStore.set(bh);
     } catch {}
   });
@@ -32,7 +32,7 @@
   </div>
 
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-lg">
-    <h2 class="font-semibold text-gray-900 mb-5">営業時間設定</h2>
+    <h2 class="font-semibold text-gray-900 mb-5">営業時間・シフト設定</h2>
     <form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-5">
       <div class="grid grid-cols-2 gap-4">
         <div>
@@ -49,6 +49,11 @@
         <input bind:value={form.longShiftThreshold} type="number" min="1" max="24" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         <p class="text-xs text-gray-400 mt-1">契約社員はこの時間以上のシフトが優先的に割り当てられます</p>
       </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">最低勤務人数（人/日）</label>
+        <input bind:value={form.minStaff} type="number" min="1" max="99" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+        <p class="text-xs text-gray-400 mt-1">AIシフト生成時に1日あたり最低この人数を確保します</p>
+      </div>
       <button type="submit" disabled={saving} class="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-all">
         {saving ? '保存中...' : '設定を保存'}
       </button>
@@ -60,6 +65,7 @@
     <ul class="text-sm text-amber-700 space-y-1">
       <li>• <strong>インターン・パート</strong>: 月収3〜5万円（時給1,173円）</li>
       <li>• <strong>契約社員</strong>: 時間制約なし、ロングシフト優先</li>
+      <li>• <strong>優先度「高」</strong>の従業員から優先的にシフトへ割り当てられます</li>
       <li>• AIシフト生成時にこれらの制約が自動適用されます</li>
     </ul>
   </div>

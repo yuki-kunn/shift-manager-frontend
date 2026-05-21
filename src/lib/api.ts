@@ -1,14 +1,16 @@
-const BASE = '/api';
+const BASE = (import.meta.env.VITE_API_BASE_URL ?? '') + '/api';
 
 export type EmployeeType = 'contract' | 'intern' | 'part';
+export type EmployeePriority = 'high' | 'medium' | 'low';
 
 export interface Employee {
   id: string; name: string; type: EmployeeType;
   hourlyWage: number; color: string;
+  priority: EmployeePriority;
   createdAt: string; updatedAt: string;
 }
 export interface BusinessHours {
-  id: string; openTime: string; closeTime: string; longShiftThreshold: number;
+  id: string; openTime: string; closeTime: string; longShiftThreshold: number; minStaff: number;
 }
 export interface ShiftRequest {
   id: string; employeeId: string; year: number; month: number; day: number;

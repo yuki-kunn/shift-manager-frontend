@@ -1,23 +1,30 @@
 <script lang="ts">
   import { employees, showToast } from '$lib/stores.js';
   import { api } from '$lib/api.js';
-  import type { Employee, EmployeeType } from '$lib/api.js';
+  import type { Employee, EmployeeType, EmployeePriority } from '$lib/api.js';
   import { EMPLOYEE_TYPE_LABELS, EMPLOYEE_TYPE_COLORS } from '$lib/utils.js';
+
+  const PRIORITY_LABELS: Record<EmployeePriority, string> = { high: '高', medium: '中', low: '低' };
+  const PRIORITY_COLORS: Record<EmployeePriority, string> = {
+    high: 'bg-red-100 text-red-700',
+    medium: 'bg-yellow-100 text-yellow-700',
+    low: 'bg-gray-100 text-gray-500',
+  };
 
   let showModal = $state(false);
   let editTarget = $state<Employee | null>(null);
-  let form = $state({ name: '', type: 'part' as EmployeeType, hourlyWage: 1173, color: '#6366f1' });
+  let form = $state({ name: '', type: 'part' as EmployeeType, hourlyWage: 1173, color: '#6366f1', priority: 'medium' as EmployeePriority });
 
   const COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#06b6d4'];
 
   function openAdd() {
     editTarget = null;
-    form = { name: '', type: 'part', hourlyWage: 1173, color: COLORS[Math.floor(Math.random() * COLORS.length)] };
+    form = { name: '', type: 'part', hourlyWage: 1173, color: COLORS[Math.floor(Math.random() * COLORS.length)], priority: 'medium' };
     showModal = true;
   }
   function openEdit(emp: Employee) {
     editTarget = emp;
-    form = { name: emp.name, type: emp.type, hourlyWage: emp.hourlyWage, color: emp.color };
+    form = { name: emp.name, type: emp.type, hourlyWage: emp.hourlyWage, color: emp.color, priority: emp.priority ?? 'medium' };
     showModal = true;
   }
   async function save() {
@@ -66,12 +73,14 @@
           <tr>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">名前</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">種別</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">優先度</th>
             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">時給</th>
             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">操作</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
           {#each $employees as emp}
+            {@const priority = (emp.priority ?? 'medium') as EmployeePriority}
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
@@ -82,6 +91,11 @@
               <td class="px-6 py-4">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {EMPLOYEE_TYPE_COLORS[emp.type]}">
                   {EMPLOYEE_TYPE_LABELS[emp.type]}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {PRIORITY_COLORS[priority]}">
+                  {PRIORITY_LABELS[priority]}
                 </span>
               </td>
               <td class="px-6 py-4 text-right text-gray-700">¥{emp.hourlyWage.toLocaleString()}/h</td>
@@ -120,6 +134,19 @@
           {#if form.type !== 'contract'}
             <p class="text-xs text-orange-600 mt-1">月収3〜5万円の範囲でシフトが調整されます（時給1,173円）</p>
           {/if}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">シフト優先度</label>
+          <div class="grid grid-cols-3 gap-2">
+            {#each ([['high', '高', 'border-red-400 bg-red-50 text-red-700'], ['medium', '中', 'border-yellow-400 bg-yellow-50 text-yellow-700'], ['low', '低', 'border-gray-300 bg-gray-50 text-gray-500']] as const) as [val, label, cls]}
+              <button type="button" onclick={() => form.priority = val}
+                class="py-2 rounded-xl border-2 text-sm font-semibold transition-all
+                  {form.priority === val ? cls : 'border-gray-200 bg-white text-gray-400'}">
+                {label}
+              </button>
+            {/each}
+          </div>
+          <p class="text-xs text-gray-400 mt-1">高優先度の従業員が先にシフトへ割り当てられます</p>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">時給（円）</label>
