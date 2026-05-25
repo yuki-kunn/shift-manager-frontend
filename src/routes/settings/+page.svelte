@@ -41,6 +41,7 @@
         longShiftThreshold: bh.longShiftThreshold,
         minStaff: bh.minStaff,
         maxStaff: bh.maxStaff,
+        fixedPrompt: bh.fixedPrompt,
       });
       bh = updated;
       businessHours.set(updated);
@@ -132,6 +133,13 @@
           <input bind:value={bh.maxStaff} type="number" min="1" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
           <p class="text-xs text-gray-400 mt-1">同時に勤務できる人数の上限です</p>
         </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">固定プロンプト</label>
+          <textarea bind:value={bh.fixedPrompt} rows="4"
+            placeholder="例: 土日は必ず2人以上配置すること。Aさんは週3日以内にすること。"
+            class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-gray-300 resize-none"></textarea>
+          <p class="text-xs text-gray-400 mt-1">毎月のシフト生成時に常に適用される指示です。空欄の場合は適用されません。</p>
+        </div>
         <button type="submit" disabled={saving} class="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-all">
           {saving ? '保存中...' : '設定を保存'}
         </button>
@@ -196,6 +204,7 @@
       <li>• <strong>優先度「高」</strong>の従業員から優先的にシフトへ割り当てられます</li>
       <li>• <strong>最低同時勤務人数</strong>: 営業時間中ずっとこの人数以上が常駐します</li>
       <li>• <strong>最高同時勤務人数</strong>: 同時勤務の上限人数を設定します</li>
+      <li>• <strong>固定プロンプト</strong>: 毎月のシフト生成に常に適用されるカスタムルールです</li>
       <li>• AIシフト生成時にこれらの制約が自動適用されます</li>
     </ul>
   </div>
