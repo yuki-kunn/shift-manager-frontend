@@ -53,14 +53,14 @@
   });
 
   async function loadAllRegistered() {
-    const map = new Map<string, number>();
-    await Promise.all($employees.map(async (emp) => {
-      try {
-        const data = await api.shiftRequests.list(emp.id, $selectedYear, $selectedMonth);
-        map.set(emp.id, data.length);
-      } catch {}
-    }));
-    registeredMap = map;
+    try {
+      const all = await api.shiftRequests.listByMonth($selectedYear, $selectedMonth);
+      const map = new Map<string, number>();
+      for (const r of all) {
+        map.set(r.employeeId, (map.get(r.employeeId) ?? 0) + 1);
+      }
+      registeredMap = map;
+    } catch {}
   }
 
   async function loadExisting() {

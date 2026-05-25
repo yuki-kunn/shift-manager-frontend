@@ -88,6 +88,8 @@ export const api = {
   shiftRequests: {
     list: (employeeId: string, year: number, month: number) =>
       fetchJson<ShiftRequest[]>(`/shift-requests?employeeId=${employeeId}&year=${year}&month=${month}`),
+    listByMonth: (year: number, month: number) =>
+      fetchJson<ShiftRequest[]>(`/shift-requests?year=${year}&month=${month}`),
     bulkUpsert: (data: Omit<ShiftRequest, 'id'>[]) =>
       fetchJson<ShiftRequest[]>('/shift-requests/bulk', { method: 'POST', body: JSON.stringify(data) }),
   },
