@@ -45,8 +45,16 @@
   // 既存データ
   let existingRequests = $state<Map<number, Partial<ShiftRequest>>>(new Map());
 
+  // 登録済み従業員の管理（employeeId → 登録件数）
+  let registeredMap = $state<Map<string, number>>(new Map());
+
   $effect(() => {
     if ($employees.length > 0 && !selectedEmployeeId) selectedEmployeeId = $employees[0].id;
+  });
+
+  $effect(() => {
+    $selectedYear; $selectedMonth;
+    loadAllRegistered();
   });
 
   $effect(() => {
@@ -55,12 +63,32 @@
     resetForm();
   });
 
+  // 全従業員の登録件数をまとめて取得
+  async function loadAllRegistered() {
+    const map = new Map<string, number>();
+    await Promise.all($employees.map(async (emp) => {
+      try {
+        const data = await api.shiftRequests.list(emp.id, $selectedYear, $selectedMonth);
+        map.set(emp.id, data.length);
+      } catch {}
+    }));
+    registeredMap = map;
+  }
+
   async function loadExisting() {
     if (!selectedEmployeeId) return;
     try {
       const data = await api.shiftRequests.list(selectedEmployeeId, $selectedYear, $selectedMonth);
       existingRequests = new Map(data.map(r => [r.day, r]));
     } catch {}
+  }
+
+  function selectEmployee(id: string) {
+    const count = registeredMap.get(id) ?? 0;
+    if (count > 0 && id !== selectedEmployeeId) {
+      if (!confirm(`この従業員はすでに${count}日分の希望シフトが登録されています。\n上書きしますか？`)) return;
+    }
+    selectedEmployeeId = id;
   }
 
   function resetForm() {
@@ -165,6 +193,8 @@
       }));
       await api.shiftRequests.bulkUpsert(data);
       await loadExisting();
+      registeredMap.set(selectedEmployeeId, (registeredMap.get(selectedEmployeeId) ?? 0) + data.length);
+      registeredMap = new Map(registeredMap);
       resetForm();
       showToast(`${data.length}日分の希望シフトを保存しました`, 'success');
     } catch {
@@ -190,11 +220,16 @@
     <!-- 従業員タブ -->
     <div class="flex gap-2 mb-6 flex-wrap">
       {#each $employees as emp}
-        <button onclick={() => selectedEmployeeId = emp.id}
-          class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all
-            {selectedEmployeeId === emp.id ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:border-indigo-300'}">
-          <div class="w-2.5 h-2.5 rounded-full" style="background-color: {emp.color}"></div>
+        {@const registered = (registeredMap.get(emp.id) ?? 0) > 0}
+        {@const isSelected = selectedEmployeeId === emp.id}
+        <button onclick={() => selectEmployee(emp.id)}
+          class="relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all
+            {isSelected ? 'bg-indigo-600 text-white shadow-sm' : registered ? 'bg-white text-gray-600 border border-emerald-300 hover:border-indigo-300' : 'bg-white text-gray-600 border border-gray-200 hover:border-indigo-300'}">
+          <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {emp.color}"></div>
           {emp.name}
+          {#if registered && !isSelected}
+            <span class="ml-1 text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">登録済</span>
+          {/if}
         </button>
       {/each}
     </div>
