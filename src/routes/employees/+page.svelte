@@ -13,13 +13,13 @@
 
   let showModal = $state(false);
   let editTarget = $state<Employee | null>(null);
-  let form = $state({ name: '', type: 'part' as EmployeeType, hourlyWage: 1173, color: '#6366f1', priority: 'medium' as EmployeePriority });
+  let form = $state({ name: '', type: 'part' as EmployeeType, hourlyWage: 1177, color: '#6366f1', priority: 'medium' as EmployeePriority });
 
   const COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#06b6d4'];
 
   function openAdd() {
     editTarget = null;
-    form = { name: '', type: 'part', hourlyWage: 1173, color: COLORS[Math.floor(Math.random() * COLORS.length)], priority: 'medium' };
+    form = { name: '', type: 'part', hourlyWage: 1177, color: COLORS[Math.floor(Math.random() * COLORS.length)], priority: 'medium' };
     showModal = true;
   }
   function openEdit(emp: Employee) {
