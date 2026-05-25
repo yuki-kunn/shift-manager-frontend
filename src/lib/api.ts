@@ -24,7 +24,7 @@ export interface Employee {
   createdAt: string; updatedAt: string;
 }
 export interface BusinessHours {
-  id: string; openTime: string; closeTime: string; longShiftThreshold: number; minStaff: number;
+  id: string; openTime: string; closeTime: string; longShiftThreshold: number; minStaff: number; maxStaff: number;
 }
 export interface ShiftRequest {
   id: string; employeeId: string; year: number; month: number; day: number;
