@@ -94,8 +94,12 @@ export const api = {
   schedules: {
     list: (year: number, month: number) =>
       fetchJson<Schedule[]>(`/schedules?year=${year}&month=${month}`),
+    addSlot: (scheduleId: string, data: Omit<ScheduleSlot, 'id' | 'scheduleId'>) =>
+      fetchJson<ScheduleSlot>(`/schedules/${scheduleId}/slots`, { method: 'POST', body: JSON.stringify(data) }),
     updateSlot: (scheduleId: string, slotId: string, data: Partial<ScheduleSlot>) =>
       fetchJson<ScheduleSlot>(`/schedules/${scheduleId}/slots/${slotId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteSlot: (scheduleId: string, slotId: string) =>
+      fetchJson<{ success: boolean }>(`/schedules/${scheduleId}/slots/${slotId}`, { method: 'DELETE' }),
     delete: (id: string) =>
       fetchJson<{ success: boolean }>(`/schedules/${id}`, { method: 'DELETE' }),
   },

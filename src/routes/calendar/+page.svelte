@@ -3,12 +3,14 @@
   import { employees, selectedYear, selectedMonth, currentSchedule, showToast } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { Schedule, ScheduleSlot } from '$lib/api.js';
-  import { getDaysInMonth, getDateString } from '$lib/utils.js';
+  import { getDaysInMonth, getDateString, calcHours } from '$lib/utils.js';
 
   let schedule = $state<Schedule | null>(null);
   let selectedDate = $state<string | null>(null);
   let editSlot = $state<ScheduleSlot | null>(null);
   let editForm = $state({ startTime: '', endTime: '', note: '' });
+  let addingNew = $state(false);
+  let newForm = $state({ employeeId: '', startTime: '', endTime: '', note: '' });
 
   const DAY_NAMES = ['日','月','火','水','木','金','土'];
   const now = new Date();
@@ -32,9 +34,12 @@
   function selectDate(date: string) {
     selectedDate = date;
     editSlot = null;
+    addingNew = false;
+    newForm = { employeeId: $employees[0]?.id ?? '', startTime: '', endTime: '', note: '' };
   }
 
   function startEdit(slot: ScheduleSlot) {
+    addingNew = false;
     editSlot = slot;
     editForm = { startTime: slot.startTime, endTime: slot.endTime, note: slot.note ?? '' };
   }
@@ -49,6 +54,30 @@
     } catch { showToast('更新に失敗しました', 'error'); }
   }
 
+  async function deleteSlot(slot: ScheduleSlot) {
+    if (!schedule) return;
+    if (!confirm('このシフトを削除しますか？')) return;
+    try {
+      await api.schedules.deleteSlot(schedule.id, slot.id);
+      schedule = { ...schedule, slots: schedule.slots.filter(s => s.id !== slot.id) };
+      showToast('削除しました', 'success');
+    } catch { showToast('削除に失敗しました', 'error'); }
+  }
+
+  async function addSlot() {
+    if (!schedule || !selectedDate || !newForm.employeeId || !newForm.startTime || !newForm.endTime) return;
+    try {
+      const added = await api.schedules.addSlot(schedule.id, {
+        employeeId: newForm.employeeId, date: selectedDate,
+        startTime: newForm.startTime, endTime: newForm.endTime, note: newForm.note || null,
+        createdAt: '', updatedAt: '',
+      });
+      schedule = { ...schedule, slots: [...schedule.slots, added] };
+      addingNew = false;
+      newForm = { employeeId: $employees[0]?.id ?? '', startTime: '', endTime: '', note: '' };
+      showToast('シフトを追加しました', 'success');
+    } catch { showToast('追加に失敗しました', 'error'); }
+  }
 
   let daysInMonth = $derived(getDaysInMonth($selectedYear, $selectedMonth));
   let firstDay = $derived(new Date($selectedYear, $selectedMonth - 1, 1).getDay());
@@ -61,7 +90,7 @@
   ]);
   let selectedSlots = $derived(selectedDate ? getSlotsForDate(selectedDate) : []);
 
-  // 印刷用: 全日付リスト
+  // 印刷用
   let printDays = $derived(
     Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1;
@@ -70,38 +99,28 @@
       return { day, date, dow };
     })
   );
-
-  // 印刷用: シフトがある従業員のみ
   let printEmployees = $derived(
     $employees.filter(emp => schedule?.slots.some(s => s.employeeId === emp.id))
   );
-
   function getSlot(empId: string, date: string) {
     return schedule?.slots.find(s => s.employeeId === empId && s.date === date) ?? null;
   }
 
-  function printSchedule() {
-    window.print();
-  }
+  function printSchedule() { window.print(); }
 </script>
 
 <div class="p-8">
   <div class="mb-6 flex items-center justify-between no-print">
     <div>
       <h1 class="text-2xl font-bold text-gray-900">{$selectedYear}年{$selectedMonth}月 カレンダー</h1>
-      <p class="text-gray-500 mt-1">シフト表の確認・微調整</p>
+      <p class="text-gray-500 mt-1">シフト表の確認・編集</p>
     </div>
     <div class="flex items-center gap-3">
       <!-- 年月切り替え -->
       <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1 py-1 shadow-sm">
-        <button onclick={() => {
-            const d = new Date($selectedYear, $selectedMonth - 2);
-            selectedYear.set(d.getFullYear()); selectedMonth.set(d.getMonth() + 1);
-          }}
+        <button onclick={() => { const d = new Date($selectedYear, $selectedMonth - 2); selectedYear.set(d.getFullYear()); selectedMonth.set(d.getMonth() + 1); }}
           class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-          </svg>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         </button>
         <select value={$selectedYear} onchange={(e) => selectedYear.set(Number((e.target as HTMLSelectElement).value))}
           class="text-sm font-medium text-gray-700 bg-transparent focus:outline-none px-1">
@@ -115,14 +134,9 @@
             <option value={m}>{m}月</option>
           {/each}
         </select>
-        <button onclick={() => {
-            const d = new Date($selectedYear, $selectedMonth);
-            selectedYear.set(d.getFullYear()); selectedMonth.set(d.getMonth() + 1);
-          }}
+        <button onclick={() => { const d = new Date($selectedYear, $selectedMonth); selectedYear.set(d.getFullYear()); selectedMonth.set(d.getMonth() + 1); }}
           class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-          </svg>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
         </button>
       </div>
 
@@ -135,25 +149,22 @@
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
           </svg>
-          PDFで保存
+          シフト表を印刷
         </button>
       {/if}
     </div>
   </div>
 
-  <!-- 印刷専用レイアウト -->
+  <!-- 印刷専用レイアウト（シフト表） -->
   <div class="print-only">
-    <div class="print-header">
-      <h1>{$selectedYear}年{$selectedMonth}月 シフト表</h1>
-    </div>
+    <div class="print-header"><h1>{$selectedYear}年{$selectedMonth}月 シフト表</h1></div>
     <table class="print-table">
       <thead>
         <tr>
           <th class="name-col">氏名</th>
           {#each printDays as d}
             <th class="day-col {d.dow === 0 ? 'sun' : d.dow === 6 ? 'sat' : ''}">
-              <div>{d.day}</div>
-              <div class="dow">{DAY_NAMES[d.dow]}</div>
+              <div>{d.day}</div><div class="dow">{DAY_NAMES[d.dow]}</div>
             </th>
           {/each}
         </tr>
@@ -161,18 +172,13 @@
       <tbody>
         {#each printEmployees as emp}
           <tr>
-            <td class="name-cell">
-              <span class="emp-dot" style="background:{emp.color}"></span>
-              {emp.name}
-            </td>
+            <td class="name-cell"><span class="emp-dot" style="background:{emp.color}"></span>{emp.name}</td>
             {#each printDays as d}
               {@const slot = getSlot(emp.id, d.date)}
               <td class="shift-cell {d.dow === 0 ? 'sun-bg' : d.dow === 6 ? 'sat-bg' : ''}">
                 {#if slot}
                   <div class="shift-bar" style="background:{emp.color}">
-                    <span>{slot.startTime}</span>
-                    <span>〜</span>
-                    <span>{slot.endTime}</span>
+                    <span>{slot.startTime}</span><span>〜</span><span>{slot.endTime}</span>
                   </div>
                 {/if}
               </td>
@@ -183,10 +189,7 @@
     </table>
     <div class="print-legend">
       {#each printEmployees as emp}
-        <span class="legend-item">
-          <span class="emp-dot" style="background:{emp.color}"></span>
-          {emp.name}
-        </span>
+        <span class="legend-item"><span class="emp-dot" style="background:{emp.color}"></span>{emp.name}</span>
       {/each}
     </div>
   </div>
@@ -225,164 +228,138 @@
 </div>
 
 <style>
-  /* 印刷専用ブロックは通常時は非表示 */
   .print-only { display: none; }
-
   @media print {
-    /* サイドバー・操作UI・モーダルを消す */
     :global(aside), :global(.fixed) { display: none !important; }
     :global(main) { margin-left: 0 !important; }
     :global(body) { background: white !important; }
-
-    /* 通常カレンダーと操作UIを非表示 */
     .no-print { display: none !important; }
     :global(.bg-white.rounded-2xl) { display: none !important; }
     :global(.p-8) > :not(.print-only) { display: none !important; }
-
-    /* 印刷専用レイアウトを表示 */
-    .print-only {
-      display: block !important;
-      font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
-      font-size: 10px;
-      color: #111;
-    }
-
-    .print-header h1 {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 10px;
-      padding-bottom: 4px;
-      border-bottom: 2px solid #333;
-    }
-
-    .print-table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-    }
-
-    .print-table th, .print-table td {
-      border: 1px solid #ccc;
-      padding: 2px 1px;
-      text-align: center;
-      vertical-align: middle;
-      overflow: hidden;
-    }
-
+    .print-only { display: block !important; font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; font-size: 10px; color: #111; }
+    .print-header h1 { font-size: 16px; font-weight: bold; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 2px solid #333; }
+    .print-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .print-table th, .print-table td { border: 1px solid #ccc; padding: 2px 1px; text-align: center; vertical-align: middle; overflow: hidden; }
     .name-col { width: 52px; text-align: left; padding-left: 4px; font-weight: bold; background: #f5f5f5; }
     .day-col { font-size: 9px; font-weight: bold; background: #f5f5f5; }
     .day-col .dow { font-size: 8px; color: #555; }
     .day-col.sun, .day-col.sun .dow { color: #dc2626; }
     .day-col.sat, .day-col.sat .dow { color: #2563eb; }
-
-    .name-cell {
-      text-align: left;
-      padding-left: 4px;
-      font-weight: 600;
-      white-space: nowrap;
-      font-size: 9px;
-    }
-
+    .name-cell { text-align: left; padding-left: 4px; font-weight: 600; white-space: nowrap; font-size: 9px; }
     .shift-cell { padding: 1px; height: 28px; }
     .shift-cell.sun-bg { background: #fff5f5; }
     .shift-cell.sat-bg { background: #eff6ff; }
-
-    .shift-bar {
-      border-radius: 2px;
-      color: white;
-      font-size: 7.5px;
-      font-weight: bold;
-      padding: 1px 2px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      line-height: 1.2;
-      height: 100%;
-      justify-content: center;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    .emp-dot {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      margin-right: 3px;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    .print-legend {
-      margin-top: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      font-size: 9px;
-    }
+    .shift-bar { border-radius: 2px; color: white; font-size: 7.5px; font-weight: bold; padding: 1px 2px; display: flex; flex-direction: column; align-items: center; line-height: 1.2; height: 100%; justify-content: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .emp-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 3px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .print-legend { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 10px; font-size: 9px; }
     .legend-item { display: flex; align-items: center; }
-
-    @page {
-      size: A4 landscape;
-      margin: 10mm;
-    }
+    @page { size: A4 landscape; margin: 10mm; }
   }
 </style>
 
+<!-- 日付クリックのサイドパネル -->
 {#if selectedDate}
   <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     role="dialog" aria-modal="true">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md">
-      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h3 class="font-bold text-gray-900">{selectedDate} のシフト</h3>
-        <button onclick={() => { selectedDate = null; editSlot = null; }} class="text-gray-400 hover:text-gray-600">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
+      <!-- ヘッダー -->
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+        <h3 class="font-bold text-gray-900">{selectedDate.replace(/-/g, '/')} のシフト</h3>
+        <button onclick={() => { selectedDate = null; editSlot = null; addingNew = false; }} class="text-gray-400 hover:text-gray-600">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
       </div>
-      <div class="p-4 space-y-3 max-h-96 overflow-y-auto">
-        {#if selectedSlots.length === 0}
-          <p class="text-center text-gray-400 py-4">この日のシフトはありません</p>
-        {:else}
-          {#each selectedSlots as slot}
-            {@const emp = getEmployee(slot.employeeId)}
-            {#if emp}
-              <div class="border border-gray-100 rounded-xl p-3">
-                {#if editSlot?.id === slot.id}
-                  <div class="space-y-2">
-                    <div class="flex items-center gap-2">
-                      <div class="w-2 h-2 rounded-full" style="background-color: {emp.color}"></div>
-                      <span class="font-medium text-sm">{emp.name}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <input type="time" bind:value={editForm.startTime} class="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-                      <span class="text-gray-400">〜</span>
-                      <input type="time" bind:value={editForm.endTime} class="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-                    </div>
-                    <input type="text" bind:value={editForm.note} placeholder="備考" class="w-full text-sm border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-                    <div class="flex gap-2">
-                      <button onclick={() => editSlot = null} class="flex-1 text-sm border border-gray-200 rounded-lg py-1.5 text-gray-600 hover:bg-gray-50">キャンセル</button>
-                      <button onclick={saveSlot} class="flex-1 text-sm bg-indigo-600 text-white rounded-lg py-1.5 hover:bg-indigo-700">保存</button>
+
+      <!-- シフト一覧 -->
+      <div class="p-4 space-y-2 overflow-y-auto flex-1">
+        {#if selectedSlots.length === 0 && !addingNew}
+          <p class="text-center text-gray-400 py-4 text-sm">この日のシフトはありません</p>
+        {/if}
+
+        {#each selectedSlots as slot}
+          {@const emp = getEmployee(slot.employeeId)}
+          {#if emp}
+            <div class="border border-gray-100 rounded-xl p-3">
+              {#if editSlot?.id === slot.id}
+                <!-- 編集フォーム -->
+                <div class="space-y-2">
+                  <div class="flex items-center gap-2">
+                    <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {emp.color}"></div>
+                    <span class="font-medium text-sm">{emp.name}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input type="time" bind:value={editForm.startTime} class="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-1"/>
+                    <span class="text-gray-400 text-xs">〜</span>
+                    <input type="time" bind:value={editForm.endTime} class="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-1"/>
+                  </div>
+                  <input type="text" bind:value={editForm.note} placeholder="備考" class="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+                  <div class="flex gap-2">
+                    <button onclick={() => editSlot = null} class="flex-1 text-sm border border-gray-200 rounded-lg py-1.5 text-gray-600 hover:bg-gray-50">キャンセル</button>
+                    <button onclick={saveSlot} class="flex-1 text-sm bg-indigo-600 text-white rounded-lg py-1.5 hover:bg-indigo-700">保存</button>
+                  </div>
+                </div>
+              {:else}
+                <!-- 表示行 -->
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {emp.color}"></div>
+                    <div class="min-w-0">
+                      <span class="font-medium text-sm text-gray-900">{emp.name}</span>
+                      <p class="text-xs text-gray-500">{slot.startTime} 〜 {slot.endTime}
+                        <span class="text-gray-400">({calcHours(slot.startTime, slot.endTime).toFixed(1)}h)</span>
+                        {slot.note ? ` | ${slot.note}` : ''}
+                      </p>
                     </div>
                   </div>
-                {:else}
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                      <div class="w-2 h-2 rounded-full" style="background-color: {emp.color}"></div>
-                      <div>
-                        <span class="font-medium text-sm text-gray-900">{emp.name}</span>
-                        <p class="text-xs text-gray-500">{slot.startTime} 〜 {slot.endTime}{slot.note ? ` | ${slot.note}` : ''}</p>
-                      </div>
-                    </div>
+                  <div class="flex items-center gap-2 flex-shrink-0">
                     <button onclick={() => startEdit(slot)} class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">編集</button>
+                    <button onclick={() => deleteSlot(slot)} class="text-xs text-red-400 hover:text-red-600 font-medium">削除</button>
                   </div>
-                {/if}
-              </div>
-            {/if}
-          {/each}
+                </div>
+              {/if}
+            </div>
+          {/if}
+        {/each}
+
+        <!-- 新規追加フォーム -->
+        {#if addingNew && schedule}
+          <div class="border-2 border-indigo-200 border-dashed rounded-xl p-3 space-y-2 bg-indigo-50/30">
+            <p class="text-xs font-semibold text-indigo-700">シフトを追加</p>
+            <select bind:value={newForm.employeeId}
+              class="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              {#each $employees as emp}
+                <option value={emp.id}>{emp.name}</option>
+              {/each}
+            </select>
+            <div class="flex items-center gap-2">
+              <input type="time" bind:value={newForm.startTime} class="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-1"/>
+              <span class="text-gray-400 text-xs">〜</span>
+              <input type="time" bind:value={newForm.endTime} class="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-1"/>
+            </div>
+            <input type="text" bind:value={newForm.note} placeholder="備考（任意）" class="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+            <div class="flex gap-2">
+              <button onclick={() => addingNew = false} class="flex-1 text-sm border border-gray-200 rounded-lg py-1.5 text-gray-600 hover:bg-gray-50 bg-white">キャンセル</button>
+              <button onclick={addSlot} disabled={!newForm.startTime || !newForm.endTime}
+                class="flex-1 text-sm bg-indigo-600 text-white rounded-lg py-1.5 hover:bg-indigo-700 disabled:opacity-50">追加</button>
+            </div>
+          </div>
         {/if}
       </div>
+
+      <!-- フッター：追加ボタン -->
+      {#if schedule && !addingNew}
+        <div class="px-4 pb-4 flex-shrink-0">
+          <button onclick={() => { addingNew = true; editSlot = null; }}
+            class="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            シフトを追加
+          </button>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
