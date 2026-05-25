@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { employees, showToast } from '$lib/stores.js';
+  import { employees, showToast, employeeTypes } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { Employee, EmployeeType, EmployeePriority } from '$lib/api.js';
-  import { EMPLOYEE_TYPE_LABELS, EMPLOYEE_TYPE_COLORS } from '$lib/utils.js';
 
   const PRIORITY_LABELS: Record<EmployeePriority, string> = { high: '高', medium: '中', low: '低' };
   const PRIORITY_COLORS: Record<EmployeePriority, string> = {
@@ -13,13 +12,13 @@
 
   let showModal = $state(false);
   let editTarget = $state<Employee | null>(null);
-  let form = $state({ name: '', type: 'part' as EmployeeType, hourlyWage: 1177, color: '#6366f1', priority: 'medium' as EmployeePriority });
+  let form = $state({ name: '', type: '', hourlyWage: 1177, color: '#6366f1', priority: 'medium' as EmployeePriority });
 
   const COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#06b6d4'];
 
   function openAdd() {
     editTarget = null;
-    form = { name: '', type: 'part', hourlyWage: 1177, color: COLORS[Math.floor(Math.random() * COLORS.length)], priority: 'medium' };
+    form = { name: '', type: $employeeTypes[0]?.name ?? '', hourlyWage: 1177, color: COLORS[Math.floor(Math.random() * COLORS.length)], priority: 'medium' };
     showModal = true;
   }
   function openEdit(emp: Employee) {
@@ -81,6 +80,7 @@
         <tbody class="divide-y divide-gray-50">
           {#each $employees as emp}
             {@const priority = (emp.priority ?? 'medium') as EmployeePriority}
+            {@const typeColor = $employeeTypes.find(t => t.name === emp.type)?.color ?? '#6366f1'}
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
@@ -89,8 +89,9 @@
                 </div>
               </td>
               <td class="px-6 py-4">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {EMPLOYEE_TYPE_COLORS[emp.type]}">
-                  {EMPLOYEE_TYPE_LABELS[emp.type]}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white"
+                  style="background-color: {typeColor}">
+                  {emp.type || '未設定'}
                 </span>
               </td>
               <td class="px-6 py-4">
@@ -127,13 +128,13 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">種別</label>
           <select bind:value={form.type} class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="contract">契約社員</option>
-            <option value="intern">インターン</option>
-            <option value="part">パート</option>
+            {#each $employeeTypes as t}
+              <option value={t.name}>{t.name}</option>
+            {/each}
+            {#if $employeeTypes.length === 0}
+              <option value="">タイプが未登録です</option>
+            {/if}
           </select>
-          {#if form.type !== 'contract'}
-            <p class="text-xs text-orange-600 mt-1">月収3〜5万円の範囲でシフトが調整されます（時給1,173円）</p>
-          {/if}
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">シフト優先度</label>

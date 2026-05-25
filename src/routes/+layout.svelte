@@ -2,7 +2,7 @@
   import '../app.css';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import Toast from '$lib/components/Toast.svelte';
-  import { employees, businessHours, auth } from '$lib/stores.js';
+  import { employees, businessHours, employeeTypes, auth } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
@@ -22,9 +22,14 @@
   onMount(async () => {
     if (!$auth || $auth.role !== 'facility') return;
     try {
-      const [emps, bh] = await Promise.all([api.employees.list(), api.settings.getBusinessHours()]);
+      const [emps, bh, types] = await Promise.all([
+        api.employees.list(),
+        api.settings.getBusinessHours(),
+        api.settings.listEmployeeTypes(),
+      ]);
       employees.set(emps);
       businessHours.set(bh);
+      employeeTypes.set(types);
     } catch (e) { console.error('Init failed:', e); }
   });
 

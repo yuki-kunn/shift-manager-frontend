@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { employees, selectedYear, selectedMonth } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, employeeTypes } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { Schedule } from '$lib/api.js';
-  import { calcHours, EMPLOYEE_TYPE_LABELS } from '$lib/utils.js';
+  import { calcHours } from '$lib/utils.js';
 
   let schedule = $state<Schedule | null>(null);
   let loading = $state(true);
@@ -128,7 +128,7 @@
             {#each rows as row, i}
               <tr class="{i % 2 === 0 ? '' : 'bg-gray-50 print:bg-gray-50'} hover:bg-indigo-50 print:hover:bg-transparent transition-colors">
                 <td class="px-4 py-3 font-medium text-gray-900 border-b border-gray-100">{row.name}</td>
-                <td class="px-4 py-3 text-gray-600 border-b border-gray-100">{EMPLOYEE_TYPE_LABELS[row.type] ?? row.type}</td>
+                <td class="px-4 py-3 text-gray-600 border-b border-gray-100">{row.type}</td>
                 <td class="px-4 py-3 text-right text-gray-700 border-b border-gray-100">{row.hourlyWage.toLocaleString('ja-JP')}円</td>
                 <td class="px-4 py-3 text-right text-gray-700 border-b border-gray-100">{formatMinutes(row.totalMinutes)}</td>
                 <td class="px-4 py-3 text-right font-semibold text-gray-900 border-b border-gray-100">{formatCurrency(row.salary)}</td>

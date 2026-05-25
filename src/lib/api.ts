@@ -7,11 +7,18 @@ function getToken(): string | null {
   try { return JSON.parse(raw)?.token ?? null; } catch { return null; }
 }
 
-export type EmployeeType = 'contract' | 'intern' | 'part';
+export interface EmployeeType {
+  id: string;
+  facilityId: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+}
 export type EmployeePriority = 'high' | 'medium' | 'low';
 
 export interface Employee {
-  id: string; name: string; type: EmployeeType;
+  id: string; name: string; type: string;
   hourlyWage: number; color: string;
   priority: EmployeePriority;
   createdAt: string; updatedAt: string;
@@ -84,6 +91,13 @@ export const api = {
     getBusinessHours: () => fetchJson<BusinessHours>('/settings/business-hours'),
     updateBusinessHours: (data: Partial<BusinessHours>) =>
       fetchJson<BusinessHours>('/settings/business-hours', { method: 'PUT', body: JSON.stringify(data) }),
+    listEmployeeTypes: () => fetchJson<EmployeeType[]>('/settings/employee-types'),
+    createEmployeeType: (data: { name: string; color: string }) =>
+      fetchJson<EmployeeType>('/settings/employee-types', { method: 'POST', body: JSON.stringify(data) }),
+    updateEmployeeType: (id: string, data: { name: string; color: string }) =>
+      fetchJson<EmployeeType>(`/settings/employee-types/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteEmployeeType: (id: string) =>
+      fetchJson<{ success: boolean }>(`/settings/employee-types/${id}`, { method: 'DELETE' }),
   },
   shiftRequests: {
     list: (employeeId: string, year: number, month: number) =>

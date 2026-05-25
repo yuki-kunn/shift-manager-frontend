@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { Employee, BusinessHours, Schedule } from './api.js';
+import type { Employee, BusinessHours, Schedule, EmployeeType } from './api.js';
 
 function persistedWritable<T>(key: string, initial: T) {
   const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
@@ -25,6 +25,7 @@ export function logout() {
 
 export const employees = writable<Employee[]>([]);
 export const businessHours = writable<BusinessHours | null>(null);
+export const employeeTypes = writable<EmployeeType[]>([]);
 export const currentSchedule = writable<Schedule | null>(null);
 export const toast = writable<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 

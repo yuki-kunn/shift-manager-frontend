@@ -6,14 +6,9 @@ export function calcHours(start: string, end: string): number {
 export function calcMonthlySalary(hours: number, wage: number): number {
   return Math.round(hours * wage);
 }
-export const EMPLOYEE_TYPE_LABELS: Record<string, string> = {
-  contract: '契約社員', intern: 'インターン', part: 'パート',
-};
-export const EMPLOYEE_TYPE_COLORS: Record<string, string> = {
-  contract: 'bg-blue-100 text-blue-800',
-  intern: 'bg-green-100 text-green-800',
-  part: 'bg-orange-100 text-orange-800',
-};
+// 後方互換のために残すが非推奨
+export const EMPLOYEE_TYPE_LABELS: Record<string, string> = {};
+export const EMPLOYEE_TYPE_COLORS: Record<string, string> = {};
 export function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
