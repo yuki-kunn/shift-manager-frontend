@@ -30,11 +30,17 @@
     salary: number;
   }
 
+  // 7時間以上のシフトは休憩1時間を差し引く
+  function calcBillableHours(startTime: string, endTime: string): number {
+    const h = calcHours(startTime, endTime);
+    return h >= 7 ? h - 1 : h;
+  }
+
   const rows = $derived.by<Row[]>(() => {
     if (!schedule || !$employees.length) return [];
     const map = new Map<string, number>();
     for (const slot of schedule.slots) {
-      const h = calcHours(slot.startTime, slot.endTime);
+      const h = calcBillableHours(slot.startTime, slot.endTime);
       map.set(slot.employeeId, (map.get(slot.employeeId) ?? 0) + h);
     }
     return $employees
@@ -145,7 +151,7 @@
       </div>
 
       <p class="text-xs text-gray-400 mt-4 print:mt-6 print:text-gray-500">
-        ※ 給与額は時給 × 勤務時間の計算のみです。社会保険・所得税等は含みません。
+        ※ 給与額は時給 × 勤務時間の計算のみです。7時間以上のシフトは休憩1時間を差し引いて計上しています。社会保険・所得税等は含みません。
       </p>
     {/if}
   </div>
