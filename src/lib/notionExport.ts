@@ -9,15 +9,19 @@ function getToken(): string | null {
   try { return JSON.parse(raw)?.token ?? null; } catch { return null; }
 }
 
-async function notionPost(path: string, body: object) {
+function authHeaders() {
   const token = getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+  };
+}
+
+async function notionRequest(method: string, path: string, body?: object) {
   const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
+    method,
+    headers: authHeaders(),
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -33,31 +37,19 @@ function calcBillableHours(startTime: string, endTime: string): number {
   return h >= 7 ? h - 1 : h;
 }
 
-export async function exportScheduleToNotion(
+function buildBlocks(
   schedule: Schedule,
-  employees: Employee[],
-  year: number,
-  month: number,
-): Promise<string> {
-  const rawParentId = import.meta.env.VITE_NOTION_PARENT_PAGE_ID as string;
-  if (!rawParentId) throw new Error('VITE_NOTION_PARENT_PAGE_ID が設定されていません');
-  const uuidMatch = rawParentId.replace(/-/g, '').match(/[0-9a-f]{32}/i);
-  if (!uuidMatch) throw new Error('VITE_NOTION_PARENT_PAGE_ID が正しくありません');
-  const raw = uuidMatch[0];
-  const parentPageId = `${raw.slice(0,8)}-${raw.slice(8,12)}-${raw.slice(12,16)}-${raw.slice(16,20)}-${raw.slice(20)}`;
-
-  const empMap = new Map<string, Employee>(employees.map(e => [e.id, e]));
+  empMap: Map<string, Employee>,
+): object[] {
   const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-
-  // 日付ごとにスロットをまとめる
   const byDate = new Map<string, ScheduleSlot[]>();
+
   for (const slot of schedule.slots) {
     if (!byDate.has(slot.date)) byDate.set(slot.date, []);
     byDate.get(slot.date)!.push(slot);
   }
-  const sortedDates = Array.from(byDate.keys()).sort();
 
-  // ブロック構築
+  const sortedDates = Array.from(byDate.keys()).sort();
   const blocks: object[] = [];
 
   for (const date of sortedDates) {
@@ -66,7 +58,6 @@ export async function exportScheduleToNotion(
     const dow = dayNames[d.getDay()];
     const dateLabel = `${d.getMonth() + 1}/${d.getDate()}（${dow}）`;
 
-    // 日付見出し
     blocks.push({
       object: 'block',
       type: 'heading_3',
@@ -75,7 +66,6 @@ export async function exportScheduleToNotion(
       },
     });
 
-    // 各スロット
     for (const slot of slots) {
       const emp = empMap.get(slot.employeeId);
       if (!emp) continue;
@@ -93,30 +83,62 @@ export async function exportScheduleToNotion(
     }
   }
 
-  const pageTitle = `${year}年${month}月 シフト表`;
+  return blocks;
+}
 
-  // Notion APIは1リクエストあたり最大100ブロックまで
+async function appendBlocks(pageId: string, blocks: object[]) {
   const CHUNK_SIZE = 100;
-  const firstChunk = blocks.slice(0, CHUNK_SIZE);
-  const restBlocks = blocks.slice(CHUNK_SIZE);
+  for (let i = 0; i < blocks.length; i += CHUNK_SIZE) {
+    const chunk = blocks.slice(i, i + CHUNK_SIZE);
+    await notionRequest('POST', `/notion/blocks/${pageId}/children`, { children: chunk });
+  }
+}
 
-  // ページ作成
-  const res = await notionPost('/notion/pages', {
-    parent: { page_id: parentPageId },
-    properties: {
-      title: [{ type: 'text', text: { content: pageTitle } }],
-    },
-    children: firstChunk,
+export async function exportScheduleToNotion(
+  schedule: Schedule,
+  employees: Employee[],
+  year: number,
+  month: number,
+): Promise<string> {
+  const rawParentId = import.meta.env.VITE_NOTION_PARENT_PAGE_ID as string;
+  if (!rawParentId) throw new Error('VITE_NOTION_PARENT_PAGE_ID が設定されていません');
+  const uuidMatch = rawParentId.replace(/-/g, '').match(/[0-9a-f]{32}/i);
+  if (!uuidMatch) throw new Error('VITE_NOTION_PARENT_PAGE_ID が正しくありません');
+  const raw = uuidMatch[0];
+  const parentPageId = `${raw.slice(0,8)}-${raw.slice(8,12)}-${raw.slice(12,16)}-${raw.slice(16,20)}-${raw.slice(20)}`;
+
+  const pageTitle = `${year}年${month}月 シフト表`;
+  const empMap = new Map<string, Employee>(employees.map(e => [e.id, e]));
+  const blocks = buildBlocks(schedule, empMap);
+
+  // 既存の同タイトルページを検索
+  const searchRes = await notionRequest('POST', '/notion/search', {
+    query: pageTitle,
+    filter: { value: 'page', property: 'object' },
   });
 
-  // 残りのブロックを100件ずつ追加
-  if (restBlocks.length > 0) {
-    const pageId = res.id as string;
-    for (let i = 0; i < restBlocks.length; i += CHUNK_SIZE) {
-      const chunk = restBlocks.slice(i, i + CHUNK_SIZE);
-      await notionPost(`/notion/blocks/${pageId}/children`, { children: chunk });
-    }
-  }
+  const existing = (searchRes.results ?? []).find(
+    (p: any) =>
+      p.parent?.page_id?.replace(/-/g, '') === raw &&
+      p.properties?.title?.title?.[0]?.plain_text === pageTitle,
+  );
 
-  return res.url as string;
+  if (existing) {
+    // 既存ページのブロックを全削除してから再追加（更新）
+    await notionRequest('DELETE', `/notion/blocks/${existing.id}/children`);
+    await appendBlocks(existing.id, blocks);
+    return existing.url as string;
+  } else {
+    // 新規作成
+    const CHUNK_SIZE = 100;
+    const res = await notionRequest('POST', '/notion/pages', {
+      parent: { page_id: parentPageId },
+      properties: {
+        title: [{ type: 'text', text: { content: pageTitle } }],
+      },
+      children: blocks.slice(0, CHUNK_SIZE),
+    });
+    await appendBlocks(res.id, blocks.slice(CHUNK_SIZE));
+    return res.url as string;
+  }
 }
