@@ -37,16 +37,6 @@ function calcBillableHours(startTime: string, endTime: string): number {
   return h >= 7 ? h - 1 : h;
 }
 
-/** 区分(type)の日本語表記 */
-function typeLabel(type: string): string {
-  const map: Record<string, string> = {
-    employee: '社員',
-    part_time: 'パート',
-    contract: '契約社員',
-    intern: 'インターン',
-  };
-  return map[type] ?? type;
-}
 
 export async function exportScheduleToNotion(
   schedule: Schedule,
@@ -121,23 +111,17 @@ export async function exportScheduleToNotion(
       const emp = empMap.get(slot.employeeId);
       if (!emp) continue;
       const billable = calcBillableHours(slot.startTime, slot.endTime);
-      const wage = emp.hourlyWage ?? 0;
-      const amount = Math.round(billable * wage);
       const noteText = slot.note ? `　　※${slot.note}` : '';
-      const typeTxt = typeLabel(emp.type);
 
       // メインテキスト: 名前 + 時間帯 + 時間数
-      const mainText = `${emp.name}　${slot.startTime}〜${slot.endTime}（${billable.toFixed(1)}h）`;
-      // サブテキスト: 区分 + 時給 + 金額
-      const subText = `  [${typeTxt}] 時給¥${wage.toLocaleString()} × ${billable.toFixed(1)}h = ¥${amount.toLocaleString()}${noteText}`;
+      const mainText = `${emp.name}　${slot.startTime}〜${slot.endTime}（${billable.toFixed(1)}h）${noteText}`;
 
       blocks.push({
         object: 'block',
         type: 'bulleted_list_item',
         bulleted_list_item: {
           rich_text: [
-            { type: 'text', text: { content: mainText }, annotations: { bold: true } },
-            { type: 'text', text: { content: subText }, annotations: { color: 'gray' } },
+            { type: 'text', text: { content: mainText } },
           ],
           color: 'default',
         },
