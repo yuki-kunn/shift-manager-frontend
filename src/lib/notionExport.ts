@@ -39,40 +39,84 @@ export async function exportScheduleToNotion(
   year: number,
   month: number,
 ): Promise<string> {
-  // データベースID（sampleデータベース）
-  const DATABASE_ID = '36e5c64f-bdc0-80c0-91d7-000b384025d8';
+  const rawParentId = import.meta.env.VITE_NOTION_PARENT_PAGE_ID as string;
+  if (!rawParentId) throw new Error('VITE_NOTION_PARENT_PAGE_ID が設定されていません');
+  const uuidMatch = rawParentId.replace(/-/g, '').match(/[0-9a-f]{32}/i);
+  if (!uuidMatch) throw new Error('VITE_NOTION_PARENT_PAGE_ID が正しくありません');
+  const raw = uuidMatch[0];
+  const parentPageId = `${raw.slice(0,8)}-${raw.slice(8,12)}-${raw.slice(12,16)}-${raw.slice(16,20)}-${raw.slice(20)}`;
 
   const empMap = new Map<string, Employee>(employees.map(e => [e.id, e]));
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
 
-  // 1スロット = 1エントリとしてデータベースに登録
+  // 日付ごとにスロットをまとめる
+  const byDate = new Map<string, ScheduleSlot[]>();
   for (const slot of schedule.slots) {
-    const emp = empMap.get(slot.employeeId);
-    if (!emp) continue;
+    if (!byDate.has(slot.date)) byDate.set(slot.date, []);
+    byDate.get(slot.date)!.push(slot);
+  }
+  const sortedDates = Array.from(byDate.keys()).sort();
 
-    const billable = calcBillableHours(slot.startTime, slot.endTime);
-    const timeRange = `${slot.startTime}〜${slot.endTime}（${billable.toFixed(1)}h）`;
-    const noteText = slot.note ? `　※${slot.note}` : '';
-    const title = `${emp.name}　${timeRange}${noteText}`;
+  // ブロック構築
+  const blocks: object[] = [];
 
-    // 日付をISO形式で（YYYY-MM-DD）
-    const dateStr = slot.date; // すでにYYYY-MM-DD形式
+  for (const date of sortedDates) {
+    const slots = byDate.get(date)!.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const d = new Date(date);
+    const dow = dayNames[d.getDay()];
+    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}（${dow}）`;
 
-    await notionPost('/notion/pages', {
-      parent: { database_id: DATABASE_ID },
-      properties: {
-        Name: {
-          title: [{ type: 'text', text: { content: title } }],
-        },
-        Date: {
-          date: { start: dateStr },
-        },
-        Tags: {
-          multi_select: [{ name: emp.type ?? 'その他' }],
-        },
+    // 日付見出し
+    blocks.push({
+      object: 'block',
+      type: 'heading_3',
+      heading_3: {
+        rich_text: [{ type: 'text', text: { content: dateLabel } }],
       },
     });
+
+    // 各スロット
+    for (const slot of slots) {
+      const emp = empMap.get(slot.employeeId);
+      if (!emp) continue;
+      const billable = calcBillableHours(slot.startTime, slot.endTime);
+      const noteText = slot.note ? `　※${slot.note}` : '';
+      const content = `${emp.name}　${slot.startTime}〜${slot.endTime}（${billable.toFixed(1)}h）${noteText}`;
+
+      blocks.push({
+        object: 'block',
+        type: 'bulleted_list_item',
+        bulleted_list_item: {
+          rich_text: [{ type: 'text', text: { content } }],
+        },
+      });
+    }
   }
 
-  // 転記先ページのURLを返す
-  return 'https://app.notion.com/p/931691cd32714dd28c92c75c11a2a39d';
+  const pageTitle = `${year}年${month}月 シフト表`;
+
+  // Notion APIは1リクエストあたり最大100ブロックまで
+  const CHUNK_SIZE = 100;
+  const firstChunk = blocks.slice(0, CHUNK_SIZE);
+  const restBlocks = blocks.slice(CHUNK_SIZE);
+
+  // ページ作成
+  const res = await notionPost('/notion/pages', {
+    parent: { page_id: parentPageId },
+    properties: {
+      title: [{ type: 'text', text: { content: pageTitle } }],
+    },
+    children: firstChunk,
+  });
+
+  // 残りのブロックを100件ずつ追加
+  if (restBlocks.length > 0) {
+    const pageId = res.id as string;
+    for (let i = 0; i < restBlocks.length; i += CHUNK_SIZE) {
+      const chunk = restBlocks.slice(i, i + CHUNK_SIZE);
+      await notionPost(`/notion/blocks/${pageId}/children`, { children: chunk });
+    }
+  }
+
+  return res.url as string;
 }
