@@ -26,6 +26,18 @@ async function notionPost(path: string, body: object) {
   return res.json();
 }
 
+function calcHours(startTime: string, endTime: string): number {
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  return ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+}
+
+function calcBillableHours(startTime: string, endTime: string): number {
+  const h = calcHours(startTime, endTime);
+  return h >= 7 ? h - 1 : h;
+}
+
+
 export async function exportScheduleToNotion(
   schedule: Schedule,
   employees: Employee[],
@@ -52,35 +64,104 @@ export async function exportScheduleToNotion(
   const blocks: object[] = [];
   const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
 
+  const pageTitle = `${year}年${month}月 シフト表`;
+
+  // --- サマリーブロック ---
+  const totalSlots = schedule.slots.length;
+  const totalHours = schedule.slots.reduce((sum, slot) => {
+    return sum + calcBillableHours(slot.startTime, slot.endTime);
+  }, 0);
+
+  blocks.push({
+    object: 'block',
+    type: 'callout',
+    callout: {
+      rich_text: [{ type: 'text', text: { content: `${year}年${month}月 シフト合計: ${totalSlots}件 / 総勤務時間: ${totalHours.toFixed(1)}h（7h以上は休憩1h控除済み）` } }],
+      icon: { emoji: '📋' },
+      color: 'blue_background',
+    },
+  });
+
+  blocks.push({ object: 'block', type: 'divider', divider: {} });
+
+  // --- 日付ごとのブロック ---
   for (const date of sortedDates) {
     const slots = byDate.get(date)!.sort((a, b) => a.startTime.localeCompare(b.startTime));
     const d = new Date(date);
     const dow = dayNames[d.getDay()];
     const dateLabel = `${d.getMonth() + 1}/${d.getDate()}（${dow}）`;
+    const dayHours = slots.reduce((sum, s) => sum + calcBillableHours(s.startTime, s.endTime), 0);
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
 
+    // 日付見出し（土日はカラー区別）
     blocks.push({
       object: 'block',
       type: 'heading_3',
-      heading_3: { rich_text: [{ type: 'text', text: { content: dateLabel } }] },
+      heading_3: {
+        rich_text: [
+          { type: 'text', text: { content: `${dateLabel}　` } },
+          { type: 'text', text: { content: `${slots.length}名　計${dayHours.toFixed(1)}h` }, annotations: { color: isWeekend ? 'red' : 'gray' } },
+        ],
+        color: isWeekend ? 'red_background' : 'default',
+      },
     });
 
+    // 各スロット
     for (const slot of slots) {
       const emp = empMap.get(slot.employeeId);
       if (!emp) continue;
-      const [sh, sm] = slot.startTime.split(':').map(Number);
-      const [eh, em] = slot.endTime.split(':').map(Number);
-      const hours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
-      const noteText = slot.note ? `  ※${slot.note}` : '';
-      const content = `${emp.name}　${slot.startTime} 〜 ${slot.endTime}（${hours.toFixed(1)}h）${noteText}`;
+      const billable = calcBillableHours(slot.startTime, slot.endTime);
+      const noteText = slot.note ? `　　※${slot.note}` : '';
+
+      // メインテキスト: 名前 + 時間帯 + 時間数
+      const mainText = `${emp.name}　${slot.startTime}〜${slot.endTime}（${billable.toFixed(1)}h）${noteText}`;
+
       blocks.push({
         object: 'block',
         type: 'bulleted_list_item',
-        bulleted_list_item: { rich_text: [{ type: 'text', text: { content } }] },
+        bulleted_list_item: {
+          rich_text: [
+            { type: 'text', text: { content: mainText } },
+          ],
+          color: 'default',
+        },
       });
     }
   }
 
-  const pageTitle = `${year}年${month}月 シフト表`;
+  // --- 月次集計ブロック ---
+  blocks.push({ object: 'block', type: 'divider', divider: {} });
+  blocks.push({
+    object: 'block',
+    type: 'heading_2',
+    heading_2: { rich_text: [{ type: 'text', text: { content: '📊 月次集計' } }] },
+  });
+
+  // 従業員別集計
+  const empSummary = new Map<string, { hours: number; slots: number; amount: number }>();
+  for (const slot of schedule.slots) {
+    const emp = empMap.get(slot.employeeId);
+    if (!emp) continue;
+    const h = calcBillableHours(slot.startTime, slot.endTime);
+    const cur = empSummary.get(emp.name) ?? { hours: 0, slots: 0, amount: 0 };
+    cur.hours += h;
+    cur.slots += 1;
+    cur.amount += Math.round(h * (emp.hourlyWage ?? 0));
+    empSummary.set(emp.name, cur);
+  }
+
+  for (const [name, summary] of Array.from(empSummary.entries()).sort((a, b) => b[1].hours - a[1].hours)) {
+    blocks.push({
+      object: 'block',
+      type: 'bulleted_list_item',
+      bulleted_list_item: {
+        rich_text: [
+          { type: 'text', text: { content: `${name}　` }, annotations: { bold: true } },
+          { type: 'text', text: { content: `${summary.slots}回　${summary.hours.toFixed(1)}h　¥${summary.amount.toLocaleString()}` } },
+        ],
+      },
+    });
+  }
 
   // Notion APIは1リクエストあたり最大100ブロックまで
   const CHUNK_SIZE = 100;
