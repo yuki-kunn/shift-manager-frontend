@@ -4,6 +4,7 @@
   import { api } from '$lib/api.js';
   import type { Schedule, ScheduleSlot } from '$lib/api.js';
   import { getDaysInMonth, getDateString, calcHours } from '$lib/utils.js';
+  import { exportScheduleToNotion } from '$lib/notionExport.js';
 
   let schedule = $state<Schedule | null>(null);
   let selectedDate = $state<string | null>(null);
@@ -107,6 +108,21 @@
   }
 
   function printSchedule() { window.print(); }
+
+  let exportingNotion = $state(false);
+  async function exportToNotion() {
+    if (!schedule) return;
+    exportingNotion = true;
+    try {
+      const url = await exportScheduleToNotion(schedule, $employees, $selectedYear, $selectedMonth);
+      showToast('Notionに転記しました', 'success');
+      window.open(url, '_blank');
+    } catch (e) {
+      showToast(`転記に失敗しました: ${e instanceof Error ? e.message : String(e)}`, 'error');
+    } finally {
+      exportingNotion = false;
+    }
+  }
 </script>
 
 <div class="p-8">
@@ -150,6 +166,21 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
           </svg>
           シフト表を印刷
+        </button>
+        <button onclick={exportToNotion} disabled={exportingNotion}
+          class="inline-flex items-center gap-2 px-4 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm">
+          {#if exportingNotion}
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+            転記中...
+          {:else}
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 4h6v6H4V4zm0 10h6v6H4v-6zm10-10h6v6h-6V4zm0 10h6v6h-6v-6z"/>
+            </svg>
+            Notionに転記
+          {/if}
         </button>
       {/if}
     </div>
