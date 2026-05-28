@@ -32,8 +32,13 @@ export async function exportScheduleToNotion(
   year: number,
   month: number,
 ): Promise<string> {
-  const parentPageId = import.meta.env.VITE_NOTION_PARENT_PAGE_ID as string;
-  if (!parentPageId) throw new Error('VITE_NOTION_PARENT_PAGE_ID が設定されていません');
+  const rawParentId = import.meta.env.VITE_NOTION_PARENT_PAGE_ID as string;
+  if (!rawParentId) throw new Error('VITE_NOTION_PARENT_PAGE_ID が設定されていません');
+  // URLやクエリパラメータが含まれている場合はUUIDだけ抽出してハイフン付きに正規化
+  const uuidMatch = rawParentId.replace(/-/g, '').match(/[0-9a-f]{32}/i);
+  if (!uuidMatch) throw new Error('VITE_NOTION_PARENT_PAGE_ID が正しくありません');
+  const raw = uuidMatch[0];
+  const parentPageId = `${raw.slice(0,8)}-${raw.slice(8,12)}-${raw.slice(12,16)}-${raw.slice(16,20)}-${raw.slice(20)}`;
 
   const empMap = new Map<string, Employee>(employees.map(e => [e.id, e]));
 
