@@ -81,13 +81,29 @@ export async function exportScheduleToNotion(
   }
 
   const pageTitle = `${year}年${month}月 シフト表`;
+
+  // Notion APIは1リクエストあたり最大100ブロックまで
+  const CHUNK_SIZE = 100;
+  const firstChunk = blocks.slice(0, CHUNK_SIZE);
+  const restBlocks = blocks.slice(CHUNK_SIZE);
+
+  // ページ作成（最初の100ブロックまで）
   const res = await notionPost('/notion/pages', {
     parent: { page_id: parentPageId },
     properties: {
       title: [{ type: 'text', text: { content: pageTitle } }],
     },
-    children: blocks,
+    children: firstChunk,
   });
+
+  // 残りのブロックを100件ずつ追加
+  if (restBlocks.length > 0) {
+    const pageId = res.id as string;
+    for (let i = 0; i < restBlocks.length; i += CHUNK_SIZE) {
+      const chunk = restBlocks.slice(i, i + CHUNK_SIZE);
+      await notionPost(`/notion/blocks/${pageId}/children`, { children: chunk });
+    }
+  }
 
   return res.url as string;
 }
