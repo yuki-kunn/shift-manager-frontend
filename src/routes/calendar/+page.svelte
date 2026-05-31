@@ -304,10 +304,9 @@
         {/each}
 
         <!-- 週次合計セル -->
-        {@const weekHours = calcWeeklyHours(week)}
         <div class="min-h-28 border-gray-100 bg-indigo-50/40 flex flex-col items-center justify-center gap-1 px-1">
           <span class="text-xs text-indigo-400 font-medium">週計</span>
-          <span class="text-sm font-bold text-indigo-700">{weekHours}h</span>
+          <span class="text-sm font-bold text-indigo-700">{calcWeeklyHours(week)}h</span>
         </div>
       </div>
     {/each}
