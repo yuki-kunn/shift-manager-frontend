@@ -80,15 +80,45 @@
     } catch { showToast('追加に失敗しました', 'error'); }
   }
 
+  // 出勤人数から重要度カラーを返す（セル背景色）
+  function getDayImportanceClass(slotCount: number): string {
+    if (slotCount === 0) return '';
+    if (slotCount >= 5) return 'bg-red-50 border-red-200';
+    if (slotCount >= 3) return 'bg-amber-50 border-amber-200';
+    return 'bg-emerald-50 border-emerald-200';
+  }
+
+  // 週ごとにセルをグループ化して週次合計を計算
+  function calcWeeklyHours(weekCells: ({ day: number; date: string } | null)[]): number {
+    let total = 0;
+    for (const cell of weekCells) {
+      if (!cell) continue;
+      for (const slot of getSlotsForDate(cell.date)) {
+        total += calcHours(slot.startTime, slot.endTime);
+      }
+    }
+    return Math.round(total * 10) / 10;
+  }
+
   let daysInMonth = $derived(getDaysInMonth($selectedYear, $selectedMonth));
   let firstDay = $derived(new Date($selectedYear, $selectedMonth - 1, 1).getDay());
-  let cells = $derived([
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => ({
-      day: i + 1,
-      date: getDateString($selectedYear, $selectedMonth, i + 1),
-    })),
-  ]);
+
+  // 週ごとに分割したセル配列
+  let weekRows = $derived.by(() => {
+    const allCells: ({ day: number; date: string } | null)[] = [
+      ...Array(firstDay).fill(null),
+      ...Array.from({ length: daysInMonth }, (_, i) => ({
+        day: i + 1,
+        date: getDateString($selectedYear, $selectedMonth, i + 1),
+      })),
+    ];
+    const rows: ({ day: number; date: string } | null)[][] = [];
+    for (let i = 0; i < allCells.length; i += 7) {
+      rows.push(allCells.slice(i, i + 7));
+    }
+    return rows;
+  });
+
   let selectedSlots = $derived(selectedDate ? getSlotsForDate(selectedDate) : []);
 
   // 印刷用
@@ -186,6 +216,16 @@
     </div>
   </div>
 
+  <!-- 重要度カラー凡例 -->
+  {#if schedule}
+    <div class="mb-3 flex items-center gap-4 text-xs text-gray-500 no-print">
+      <span class="font-medium">出勤人数の目安：</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-100 border border-emerald-200 inline-block"></span>1〜2名</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-100 border border-amber-200 inline-block"></span>3〜4名</span>
+      <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-red-100 border border-red-200 inline-block"></span>5名以上</span>
+    </div>
+  {/if}
+
   <!-- 印刷専用レイアウト（シフト表） -->
   <div class="print-only">
     <div class="print-header"><h1>{$selectedYear}年{$selectedMonth}月 シフト表</h1></div>
@@ -225,36 +265,52 @@
     </div>
   </div>
 
+  <!-- カレンダー本体 -->
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="grid grid-cols-7 border-b border-gray-100">
+    <!-- 曜日ヘッダー -->
+    <div class="grid grid-cols-8 border-b border-gray-100">
       {#each DAY_NAMES as name, i}
         <div class="py-3 text-center text-xs font-semibold {i===0?'text-red-500':i===6?'text-blue-500':'text-gray-500'}">{name}</div>
       {/each}
+      <div class="py-3 text-center text-xs font-semibold text-indigo-400">週計</div>
     </div>
-    <div class="grid grid-cols-7">
-      {#each cells as cell}
-        {#if cell === null}
-          <div class="min-h-28 border-b border-r border-gray-50 bg-gray-50/30"></div>
-        {:else}
-          {@const dayName = DAY_NAMES[new Date($selectedYear, $selectedMonth-1, cell.day).getDay()]}
-          {@const slots = getSlotsForDate(cell.date)}
-          <button onclick={() => selectDate(cell.date)}
-            class="min-h-28 border-b border-r border-gray-100 p-1.5 text-left w-full hover:bg-indigo-50/50 transition-colors {selectedDate === cell.date ? 'bg-indigo-50' : ''}">
-            <span class="text-xs font-semibold block mb-1 {dayName==='日'?'text-red-500':dayName==='土'?'text-blue-500':'text-gray-600'}">{cell.day}</span>
-            <div class="space-y-0.5">
-              {#each slots as slot}
-                {@const emp = getEmployee(slot.employeeId)}
-                {#if emp}
-                  <div class="text-xs px-1.5 py-0.5 rounded-md font-medium text-white truncate" style="background-color: {emp.color}">
-                    {emp.name} {slot.startTime}〜{slot.endTime}
-                  </div>
-                {/if}
-              {/each}
-            </div>
-          </button>
-        {/if}
-      {/each}
-    </div>
+
+    <!-- 週行 -->
+    {#each weekRows as week, wi}
+      <div class="grid grid-cols-8 border-b border-gray-100 last:border-b-0">
+        {#each week as cell}
+          {#if cell === null}
+            <div class="min-h-28 border-r border-gray-50 bg-gray-50/30"></div>
+          {:else}
+            {@const dayOfWeek = new Date($selectedYear, $selectedMonth-1, cell.day).getDay()}
+            {@const dayName = DAY_NAMES[dayOfWeek]}
+            {@const slots = getSlotsForDate(cell.date)}
+            {@const importanceClass = getDayImportanceClass(slots.length)}
+            <button onclick={() => selectDate(cell.date)}
+              class="min-h-28 border-r border-gray-100 p-1.5 text-left w-full hover:brightness-95 transition-all {selectedDate === cell.date ? 'ring-2 ring-inset ring-indigo-400' : ''} {importanceClass}">
+              <span class="text-xs font-semibold block mb-1 {dayName==='日'?'text-red-500':dayName==='土'?'text-blue-500':'text-gray-600'}">{cell.day}</span>
+              <div class="space-y-0.5">
+                {#each slots as slot}
+                  {@const emp = getEmployee(slot.employeeId)}
+                  {#if emp}
+                    <div class="text-xs px-1.5 py-0.5 rounded-md font-medium text-white truncate" style="background-color: {emp.color}">
+                      {emp.name} {slot.startTime}〜{slot.endTime}
+                    </div>
+                  {/if}
+                {/each}
+              </div>
+            </button>
+          {/if}
+        {/each}
+
+        <!-- 週次合計セル -->
+        {@const weekHours = calcWeeklyHours(week)}
+        <div class="min-h-28 border-gray-100 bg-indigo-50/40 flex flex-col items-center justify-center gap-1 px-1">
+          <span class="text-xs text-indigo-400 font-medium">週計</span>
+          <span class="text-sm font-bold text-indigo-700">{weekHours}h</span>
+        </div>
+      </div>
+    {/each}
   </div>
 </div>
 

@@ -28,6 +28,8 @@
     totalMinutes: number;
     totalHours: number;
     salary: number;
+    incomeLower: number | null;
+    incomeUpper: number | null;
   }
 
   // 7時間以上のシフトは休憩1時間を差し引く
@@ -56,6 +58,8 @@
           totalMinutes,
           totalHours: Math.round(totalHours * 10) / 10,
           salary: Math.round(totalHours * e.hourlyWage),
+          incomeLower: e.incomeLower ?? null,
+          incomeUpper: e.incomeUpper ?? null,
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
@@ -128,16 +132,36 @@
               <th class="text-right px-4 py-3 font-semibold text-gray-700 border-b border-gray-200">時給</th>
               <th class="text-right px-4 py-3 font-semibold text-gray-700 border-b border-gray-200">総勤務時間</th>
               <th class="text-right px-4 py-3 font-semibold text-gray-700 border-b border-gray-200">給与合計</th>
+              <th class="text-center px-4 py-3 font-semibold text-gray-700 border-b border-gray-200 print:hidden">収入範囲</th>
             </tr>
           </thead>
           <tbody>
             {#each rows as row, i}
               <tr class="{i % 2 === 0 ? '' : 'bg-gray-50 print:bg-gray-50'} hover:bg-indigo-50 print:hover:bg-transparent transition-colors">
-                <td class="px-4 py-3 font-medium text-gray-900 border-b border-gray-100">{row.name}</td>
+                {@const belowLower = row.incomeLower != null && row.salary < row.incomeLower}
+                {@const aboveUpper = row.incomeUpper != null && row.salary > row.incomeUpper}
+                <td class="px-4 py-3 font-medium border-b border-gray-100 {belowLower ? 'text-blue-700' : aboveUpper ? 'text-red-700' : 'text-gray-900'}">{row.name}</td>
                 <td class="px-4 py-3 text-gray-600 border-b border-gray-100">{row.type}</td>
                 <td class="px-4 py-3 text-right text-gray-700 border-b border-gray-100">{row.hourlyWage.toLocaleString('ja-JP')}円</td>
                 <td class="px-4 py-3 text-right text-gray-700 border-b border-gray-100">{formatMinutes(row.totalMinutes)}</td>
-                <td class="px-4 py-3 text-right font-semibold text-gray-900 border-b border-gray-100">{formatCurrency(row.salary)}</td>
+                <td class="px-4 py-3 text-right font-semibold border-b border-gray-100 {belowLower ? 'text-blue-600' : aboveUpper ? 'text-red-600' : 'text-gray-900'}">{formatCurrency(row.salary)}</td>
+                <td class="px-4 py-3 text-center border-b border-gray-100 print:hidden">
+                  {#if belowLower}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                      ↓ 下限割れ
+                    </span>
+                  {:else if aboveUpper}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      ↑ 上限超過
+                    </span>
+                  {:else if row.incomeLower != null || row.incomeUpper != null}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      ✓ 範囲内
+                    </span>
+                  {:else}
+                    <span class="text-gray-300 text-xs">—</span>
+                  {/if}
+                </td>
               </tr>
             {/each}
           </tbody>

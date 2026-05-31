@@ -12,18 +12,21 @@
 
   let showModal = $state(false);
   let editTarget = $state<Employee | null>(null);
-  let form = $state({ name: '', type: '', hourlyWage: 1177, color: '#6366f1', priority: 'medium' as EmployeePriority });
+  let form = $state({
+    name: '', type: '', hourlyWage: 1177, color: '#6366f1', priority: 'medium' as EmployeePriority,
+    incomeLower: null as number | null, incomeUpper: null as number | null,
+  });
 
   const COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#06b6d4'];
 
   function openAdd() {
     editTarget = null;
-    form = { name: '', type: $employeeTypes[0]?.name ?? '', hourlyWage: 1177, color: COLORS[Math.floor(Math.random() * COLORS.length)], priority: 'medium' };
+    form = { name: '', type: $employeeTypes[0]?.name ?? '', hourlyWage: 1177, color: COLORS[Math.floor(Math.random() * COLORS.length)], priority: 'medium', incomeLower: null, incomeUpper: null };
     showModal = true;
   }
   function openEdit(emp: Employee) {
     editTarget = emp;
-    form = { name: emp.name, type: emp.type, hourlyWage: emp.hourlyWage, color: emp.color, priority: emp.priority ?? 'medium' };
+    form = { name: emp.name, type: emp.type, hourlyWage: emp.hourlyWage, color: emp.color, priority: emp.priority ?? 'medium', incomeLower: emp.incomeLower ?? null, incomeUpper: emp.incomeUpper ?? null };
     showModal = true;
   }
   async function save() {
@@ -74,6 +77,8 @@
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">種別</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">優先度</th>
             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">時給</th>
+            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">収入下限</th>
+            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">収入上限</th>
             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">操作</th>
           </tr>
         </thead>
@@ -100,6 +105,12 @@
                 </span>
               </td>
               <td class="px-6 py-4 text-right text-gray-700">¥{emp.hourlyWage.toLocaleString()}/h</td>
+              <td class="px-6 py-4 text-right text-gray-500 text-sm">
+                {emp.incomeLower != null ? `¥${emp.incomeLower.toLocaleString()}` : '—'}
+              </td>
+              <td class="px-6 py-4 text-right text-gray-500 text-sm">
+                {emp.incomeUpper != null ? `¥${emp.incomeUpper.toLocaleString()}` : '—'}
+              </td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-3">
                   <button onclick={() => openEdit(emp)} class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">編集</button>
@@ -117,7 +128,7 @@
 {#if showModal}
   <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     role="dialog" aria-modal="true">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
       <h2 class="text-lg font-bold text-gray-900 mb-5">{editTarget ? '従業員を編集' : '従業員を追加'}</h2>
       <form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-4">
         <div>
@@ -154,6 +165,31 @@
           <input bind:value={form.hourlyWage} type="number" min="1"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
+
+        <!-- 収入上下限 -->
+        <div class="border border-gray-100 rounded-xl p-4 bg-gray-50 space-y-3">
+          <p class="text-sm font-medium text-gray-700">月収入の上下限（任意）</p>
+          <p class="text-xs text-gray-400">給与計算画面でアラートとして表示されます</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">下限（円）</label>
+              <input
+                type="number" min="0" placeholder="例: 50000"
+                value={form.incomeLower ?? ''}
+                oninput={(e) => { const v = (e.target as HTMLInputElement).value; form.incomeLower = v === '' ? null : Number(v); }}
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"/>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">上限（円）</label>
+              <input
+                type="number" min="0" placeholder="例: 100000"
+                value={form.incomeUpper ?? ''}
+                oninput={(e) => { const v = (e.target as HTMLInputElement).value; form.incomeUpper = v === '' ? null : Number(v); }}
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"/>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">カレンダー表示色</label>
           <div class="flex flex-wrap gap-2">

@@ -21,6 +21,8 @@ export interface Employee {
   id: string; name: string; type: string;
   hourlyWage: number; color: string;
   priority: EmployeePriority;
+  incomeLower: number | null;
+  incomeUpper: number | null;
   createdAt: string; updatedAt: string;
 }
 export interface BusinessHours {
