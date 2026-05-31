@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { employees, selectedYear, selectedMonth, showToast } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, showToast, employeeTypes } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { CalendarEvent } from '$lib/api.js';
 
@@ -16,6 +16,8 @@
   let selectedEvent = $state<CalendarEvent | null>(null);
   let addingMemberId = $state('');
   let addingMemberNote = $state('');
+  let addingMemberStart = $state('');
+  let addingMemberEnd = $state('');
 
   const COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#06b6d4'];
   const DAY_NAMES = ['日','月','火','水','木','金','土'];
@@ -83,12 +85,19 @@
       showToast('既に追加されています', 'error'); return;
     }
     try {
-      const member = await api.events.addMember(selectedEvent.id, addingMemberId, addingMemberNote || undefined);
+      const member = await api.events.addMember(
+        selectedEvent.id, addingMemberId,
+        addingMemberNote || undefined,
+        addingMemberStart || undefined,
+        addingMemberEnd || undefined,
+      );
       const updated = { ...selectedEvent, members: [...selectedEvent.members, member] };
       selectedEvent = updated;
       events = events.map(e => e.id === updated.id ? updated : e);
       addingMemberId = $employees[0]?.id ?? '';
       addingMemberNote = '';
+      addingMemberStart = '';
+      addingMemberEnd = '';
       showToast('追加しました', 'success');
     } catch { showToast('追加に失敗しました', 'error'); }
   }
@@ -181,8 +190,9 @@
                             {#each ev.members as member}
                               {@const emp = $employees.find(e => e.id === member.employeeId)}
                               {#if emp}
+                                {@const typeColor = $employeeTypes.find(t => t.name === emp.type)?.color ?? '#6366f1'}
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                                  style="background-color: {emp.color}">
+                                  style="background-color: {typeColor}">
                                   {emp.name}
                                 </span>
                               {/if}
@@ -230,11 +240,15 @@
               {#each selectedEvent.members as member}
                 {@const emp = $employees.find(e => e.id === member.employeeId)}
                 {#if emp}
+                  {@const memberTypeColor = $employeeTypes.find(t => t.name === emp.type)?.color ?? '#6366f1'}
                   <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-gray-50">
                     <div class="flex items-center gap-2 min-w-0">
-                      <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {emp.color}"></div>
+                      <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {memberTypeColor}"></div>
                       <div class="min-w-0">
                         <p class="text-sm font-medium text-gray-900 truncate">{emp.name}</p>
+                        {#if member.startTime && member.endTime}
+                          <p class="text-xs text-indigo-600 font-medium">{member.startTime}〜{member.endTime}</p>
+                        {/if}
                         {#if member.note}
                           <p class="text-xs text-gray-400 truncate">{member.note}</p>
                         {/if}
@@ -261,6 +275,15 @@
                   <option value={emp.id}>{emp.name}</option>
                 {/each}
               </select>
+              <div class="flex items-center gap-1.5">
+                <input id="event-member-start" type="time" bind:value={addingMemberStart}
+                  aria-label="シフト開始時間"
+                  class="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+                <span class="text-gray-400 text-xs flex-shrink-0">〜</span>
+                <input id="event-member-end" type="time" bind:value={addingMemberEnd}
+                  aria-label="シフト終了時間"
+                  class="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+              </div>
               <label for="event-member-note" class="sr-only">備考</label>
               <input id="event-member-note" type="text" bind:value={addingMemberNote} placeholder="備考（任意）"
                 class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>

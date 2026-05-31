@@ -13,30 +13,30 @@
   let showModal = $state(false);
   let editTarget = $state<Employee | null>(null);
   let form = $state({
-    name: '', type: '', hourlyWage: 1177, color: '#6366f1', priority: 'medium' as EmployeePriority,
+    name: '', type: '', hourlyWage: 1177, priority: 'medium' as EmployeePriority,
     incomeLower: null as number | null, incomeUpper: null as number | null,
   });
 
-  const COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#06b6d4'];
-
   function openAdd() {
     editTarget = null;
-    form = { name: '', type: $employeeTypes[0]?.name ?? '', hourlyWage: 1177, color: COLORS[Math.floor(Math.random() * COLORS.length)], priority: 'medium', incomeLower: null, incomeUpper: null };
+    form = { name: '', type: $employeeTypes[0]?.name ?? '', hourlyWage: 1177, priority: 'medium', incomeLower: null, incomeUpper: null };
     showModal = true;
   }
   function openEdit(emp: Employee) {
     editTarget = emp;
-    form = { name: emp.name, type: emp.type, hourlyWage: emp.hourlyWage, color: emp.color, priority: emp.priority ?? 'medium', incomeLower: emp.incomeLower ?? null, incomeUpper: emp.incomeUpper ?? null };
+    form = { name: emp.name, type: emp.type, hourlyWage: emp.hourlyWage, priority: emp.priority ?? 'medium', incomeLower: emp.incomeLower ?? null, incomeUpper: emp.incomeUpper ?? null };
     showModal = true;
   }
   async function save() {
+    // typeColorを自動設定
+    const typeColor = $employeeTypes.find(t => t.name === form.type)?.color ?? '#6366f1';
     try {
       if (editTarget) {
-        const updated = await api.employees.update(editTarget.id, form);
+        const updated = await api.employees.update(editTarget.id, { ...form, color: typeColor });
         employees.update(list => list.map(e => e.id === updated.id ? updated : e));
         showToast('更新しました', 'success');
       } else {
-        const created = await api.employees.create(form);
+        const created = await api.employees.create({ ...form, color: typeColor });
         employees.update(list => [...list, created]);
         showToast('追加しました', 'success');
       }
@@ -89,7 +89,7 @@
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
-                  <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {emp.color}"></div>
+                  <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {typeColor}"></div>
                   <span class="font-medium text-gray-900">{emp.name}</span>
                 </div>
               </td>
@@ -190,16 +190,6 @@
           </div>
         </div>
 
-        <div>
-          <p class="block text-sm font-medium text-gray-700 mb-2">カレンダー表示色</p>
-          <div class="flex flex-wrap gap-2">
-            {#each COLORS as c}
-              <button type="button" onclick={() => form.color = c}
-                class="w-8 h-8 rounded-full border-2 transition-all {form.color === c ? 'border-gray-800 scale-110' : 'border-transparent'}"
-                style="background-color: {c}"></button>
-            {/each}
-          </div>
-        </div>
         <div class="flex gap-3 pt-2">
           <button type="button" onclick={() => showModal = false}
             class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">キャンセル</button>

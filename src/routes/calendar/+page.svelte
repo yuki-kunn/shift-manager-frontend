@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { employees, selectedYear, selectedMonth, currentSchedule, showToast } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, currentSchedule, showToast, employeeTypes } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { Schedule, ScheduleSlot } from '$lib/api.js';
   import { getDaysInMonth, getDateString, calcHours } from '$lib/utils.js';
@@ -305,18 +305,13 @@
               class="min-h-28 border-r border-gray-100 p-1.5 text-left w-full hover:brightness-95 transition-all {selectedDate === cell.date ? 'ring-2 ring-inset ring-indigo-400' : ''} {importanceClass}">
               <span class="text-xs font-semibold block mb-1 {dayName==='日'?'text-red-500':dayName==='土'?'text-blue-500':'text-gray-600'}">{cell.day}</span>
               <div class="space-y-0.5">
-                {#each dayEvents as ev}
-                  <div class="text-xs px-1.5 py-0.5 rounded-md font-medium text-white truncate flex items-center gap-1" style="background-color: {ev.color}">
-                    <svg class="w-2.5 h-2.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                    </svg>
-                    {ev.title}
-                  </div>
-                {/each}
                 {#each slots as slot}
                   {@const emp = getEmployee(slot.employeeId)}
                   {#if emp}
-                    <div class="text-xs px-1.5 py-0.5 rounded-md font-medium text-white truncate" style="background-color: {emp.color}">
+                    {@const isEventStaff = dayEvents.some(ev => ev.members.some(m => m.employeeId === slot.employeeId))}
+                    {@const typeColor = $employeeTypes.find(t => t.name === emp.type)?.color ?? '#6366f1'}
+                    {@const slotColor = isEventStaff ? '#ef4444' : typeColor}
+                    <div class="text-xs px-1.5 py-0.5 rounded-md font-medium text-white truncate" style="background-color: {slotColor}">
                       {emp.name} {slot.startTime}〜{slot.endTime}
                     </div>
                   {/if}
