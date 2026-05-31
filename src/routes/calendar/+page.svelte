@@ -5,8 +5,10 @@
   import type { Schedule, ScheduleSlot } from '$lib/api.js';
   import { getDaysInMonth, getDateString, calcHours } from '$lib/utils.js';
   import { exportScheduleToNotion } from '$lib/notionExport.js';
+  import type { CalendarEvent } from '$lib/api.js';
 
   let schedule = $state<Schedule | null>(null);
+  let calendarEvents = $state<CalendarEvent[]>([]);
   let selectedDate = $state<string | null>(null);
   let editSlot = $state<ScheduleSlot | null>(null);
   let editForm = $state({ startTime: '', endTime: '', note: '' });
@@ -21,10 +23,18 @@
 
   async function loadSchedule() {
     try {
-      const list = await api.schedules.list($selectedYear, $selectedMonth);
+      const [list, evs] = await Promise.all([
+        api.schedules.list($selectedYear, $selectedMonth),
+        api.events.list($selectedYear, $selectedMonth),
+      ]);
       schedule = list[0] ?? null;
       currentSchedule.set(schedule);
+      calendarEvents = evs;
     } catch {}
+  }
+
+  function getEventsForDate(date: string): CalendarEvent[] {
+    return calendarEvents.filter(e => e.date === date);
   }
 
   function getSlotsForDate(date: string): ScheduleSlot[] {
@@ -170,12 +180,14 @@
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         </button>
         <select value={$selectedYear} onchange={(e) => selectedYear.set(Number((e.target as HTMLSelectElement).value))}
+          aria-label="年を選択"
           class="text-sm font-medium text-gray-700 bg-transparent focus:outline-none px-1">
           {#each [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1] as y}
             <option value={y}>{y}年</option>
           {/each}
         </select>
         <select value={$selectedMonth} onchange={(e) => selectedMonth.set(Number((e.target as HTMLSelectElement).value))}
+          aria-label="月を選択"
           class="text-sm font-medium text-gray-700 bg-transparent focus:outline-none px-1">
           {#each Array.from({length:12},(_,i)=>i+1) as m}
             <option value={m}>{m}月</option>
@@ -287,11 +299,20 @@
             {@const dayOfWeek = new Date($selectedYear, $selectedMonth-1, cell.day).getDay()}
             {@const dayName = DAY_NAMES[dayOfWeek]}
             {@const slots = getSlotsForDate(cell.date)}
+            {@const dayEvents = getEventsForDate(cell.date)}
             {@const importanceClass = getDayImportanceClass(slots.length)}
             <button onclick={() => selectDate(cell.date)}
               class="min-h-28 border-r border-gray-100 p-1.5 text-left w-full hover:brightness-95 transition-all {selectedDate === cell.date ? 'ring-2 ring-inset ring-indigo-400' : ''} {importanceClass}">
               <span class="text-xs font-semibold block mb-1 {dayName==='日'?'text-red-500':dayName==='土'?'text-blue-500':'text-gray-600'}">{cell.day}</span>
               <div class="space-y-0.5">
+                {#each dayEvents as ev}
+                  <div class="text-xs px-1.5 py-0.5 rounded-md font-medium text-white truncate flex items-center gap-1" style="background-color: {ev.color}">
+                    <svg class="w-2.5 h-2.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    {ev.title}
+                  </div>
+                {/each}
                 {#each slots as slot}
                   {@const emp = getEmployee(slot.employeeId)}
                   {#if emp}

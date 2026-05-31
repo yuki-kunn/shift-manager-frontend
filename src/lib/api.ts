@@ -40,6 +40,15 @@ export interface Schedule {
   id: string; year: number; month: number; status: 'draft' | 'published'; slots: ScheduleSlot[];
 }
 
+export interface EventMember {
+  id: string; eventId: string; employeeId: string; note: string | null; createdAt: string;
+}
+export interface CalendarEvent {
+  id: string; facilityId: string; date: string; title: string;
+  description: string | null; color: string; createdAt: string; updatedAt: string;
+  members: EventMember[];
+}
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -124,5 +133,19 @@ export const api = {
   ai: {
     generateSchedule: (year: number, month: number, note?: string) =>
       fetchJson<Schedule>('/ai/generate-schedule', { method: 'POST', body: JSON.stringify({ year, month, note }) }),
+  },
+  events: {
+    list: (year: number, month: number) =>
+      fetchJson<CalendarEvent[]>(`/events?year=${year}&month=${month}`),
+    create: (data: { date: string; title: string; description?: string; color?: string }) =>
+      fetchJson<CalendarEvent>('/events', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: { date: string; title: string; description?: string; color?: string }) =>
+      fetchJson<CalendarEvent>(`/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      fetchJson<{ success: boolean }>(`/events/${id}`, { method: 'DELETE' }),
+    addMember: (eventId: string, employeeId: string, note?: string) =>
+      fetchJson<EventMember>(`/events/${eventId}/members`, { method: 'POST', body: JSON.stringify({ employeeId, note }) }),
+    removeMember: (eventId: string, memberId: string) =>
+      fetchJson<{ success: boolean }>(`/events/${eventId}/members/${memberId}`, { method: 'DELETE' }),
   },
 };
