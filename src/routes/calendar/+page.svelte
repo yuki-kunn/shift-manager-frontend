@@ -165,6 +165,7 @@
       <!-- 年月切り替え -->
       <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1 py-1 shadow-sm">
         <button onclick={() => { const d = new Date($selectedYear, $selectedMonth - 2); selectedYear.set(d.getFullYear()); selectedMonth.set(d.getMonth() + 1); }}
+          aria-label="前月"
           class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         </button>
@@ -181,6 +182,7 @@
           {/each}
         </select>
         <button onclick={() => { const d = new Date($selectedYear, $selectedMonth); selectedYear.set(d.getFullYear()); selectedMonth.set(d.getMonth() + 1); }}
+          aria-label="次月"
           class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
         </button>
@@ -351,7 +353,7 @@
       <!-- ヘッダー -->
       <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
         <h3 class="font-bold text-gray-900">{selectedDate.replace(/-/g, '/')} のシフト</h3>
-        <button onclick={() => { selectedDate = null; editSlot = null; addingNew = false; }} class="text-gray-400 hover:text-gray-600">
+        <button onclick={() => { selectedDate = null; editSlot = null; addingNew = false; }} aria-label="閉じる" class="text-gray-400 hover:text-gray-600">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
