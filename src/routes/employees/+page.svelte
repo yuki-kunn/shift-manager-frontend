@@ -132,13 +132,13 @@
       <h2 class="text-lg font-bold text-gray-900 mb-5">{editTarget ? '従業員を編集' : '従業員を追加'}</h2>
       <form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">名前 <span class="text-red-500">*</span></label>
-          <input bind:value={form.name} required type="text" placeholder="山田 太郎"
+          <label for="emp-name" class="block text-sm font-medium text-gray-700 mb-1">名前 <span class="text-red-500">*</span></label>
+          <input id="emp-name" bind:value={form.name} required type="text" placeholder="山田 太郎"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">種別</label>
-          <select bind:value={form.type} class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <label for="emp-type" class="block text-sm font-medium text-gray-700 mb-1">種別</label>
+          <select id="emp-type" bind:value={form.type} class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             {#each $employeeTypes as t}
               <option value={t.name}>{t.name}</option>
             {/each}
@@ -161,8 +161,8 @@
           <p class="text-xs text-gray-400 mt-1">高優先度の従業員が先にシフトへ割り当てられます</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">時給（円）</label>
-          <input bind:value={form.hourlyWage} type="number" min="1"
+          <label for="emp-wage" class="block text-sm font-medium text-gray-700 mb-1">時給（円）</label>
+          <input id="emp-wage" bind:value={form.hourlyWage} type="number" min="1"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
 
@@ -172,16 +172,16 @@
           <p class="text-xs text-gray-400">給与計算画面でアラートとして表示されます</p>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">下限（円）</label>
-              <input
+              <label for="emp-income-lower" class="block text-xs font-medium text-gray-600 mb-1">下限（円）</label>
+              <input id="emp-income-lower"
                 type="number" min="0" placeholder="例: 50000"
                 value={form.incomeLower ?? ''}
                 oninput={(e) => { const v = (e.target as HTMLInputElement).value; form.incomeLower = v === '' ? null : Number(v); }}
                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"/>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">上限（円）</label>
-              <input
+              <label for="emp-income-upper" class="block text-xs font-medium text-gray-600 mb-1">上限（円）</label>
+              <input id="emp-income-upper"
                 type="number" min="0" placeholder="例: 100000"
                 value={form.incomeUpper ?? ''}
                 oninput={(e) => { const v = (e.target as HTMLInputElement).value; form.incomeUpper = v === '' ? null : Number(v); }}

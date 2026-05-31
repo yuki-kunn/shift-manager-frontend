@@ -56,14 +56,14 @@
 
     <form onsubmit={(e) => { e.preventDefault(); login(); }} class="space-y-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">ユーザーID</label>
-        <input bind:value={username} type="text" required autocomplete="username"
+        <label for="login-username" class="block text-sm font-medium text-gray-700 mb-1">ユーザーID</label>
+        <input id="login-username" bind:value={username} type="text" required autocomplete="username"
           placeholder={mode === 'admin' ? 'admin' : '施設のユーザーID'}
           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">パスワード</label>
-        <input bind:value={password} type="password" required autocomplete="current-password"
+        <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">パスワード</label>
+        <input id="login-password" bind:value={password} type="password" required autocomplete="current-password"
           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
       </div>
       <button type="submit" disabled={loading}

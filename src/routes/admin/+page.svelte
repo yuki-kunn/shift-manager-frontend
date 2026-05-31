@@ -141,19 +141,19 @@
       <h3 class="text-lg font-bold text-gray-900 mb-5">施設を追加</h3>
       <form onsubmit={(e) => { e.preventDefault(); createFacility(); }} class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">施設名 <span class="text-red-500">*</span></label>
-          <input bind:value={form.name} required type="text" placeholder="例: 渋谷店"
+          <label for="admin-facility-name" class="block text-sm font-medium text-gray-700 mb-1">施設名 <span class="text-red-500">*</span></label>
+          <input id="admin-facility-name" bind:value={form.name} required type="text" placeholder="例: 渋谷店"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">ユーザーID <span class="text-red-500">*</span></label>
-          <input bind:value={form.username} required type="text" placeholder="例: shibuya"
+          <label for="admin-facility-username" class="block text-sm font-medium text-gray-700 mb-1">ユーザーID <span class="text-red-500">*</span></label>
+          <input id="admin-facility-username" bind:value={form.username} required type="text" placeholder="例: shibuya"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
           <p class="text-xs text-gray-400 mt-1">施設スタッフがログイン時に使用するIDです</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">パスワード <span class="text-red-500">*</span></label>
-          <input bind:value={form.password} required type="text"
+          <label for="admin-facility-password" class="block text-sm font-medium text-gray-700 mb-1">パスワード <span class="text-red-500">*</span></label>
+          <input id="admin-facility-password" bind:value={form.password} required type="text"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
           <p class="text-xs text-gray-400 mt-1">施設スタッフに共有するパスワードです</p>
         </div>
@@ -177,8 +177,8 @@
       <h3 class="text-lg font-bold text-gray-900 mb-4">パスワード変更</h3>
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">新しいパスワード</label>
-          <input bind:value={newPassword} type="text"
+          <label for="admin-new-password" class="block text-sm font-medium text-gray-700 mb-1">新しいパスワード</label>
+          <input id="admin-new-password" bind:value={newPassword} type="text"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
         <div class="flex gap-3">

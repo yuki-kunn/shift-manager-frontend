@@ -110,32 +110,32 @@
       <form onsubmit={(e) => { e.preventDefault(); saveBh(); }} class="space-y-5">
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">開店時間</label>
-            <input bind:value={bh.openTime} type="time" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+            <label for="bh-open-time" class="block text-sm font-medium text-gray-700 mb-1">開店時間</label>
+            <input id="bh-open-time" bind:value={bh.openTime} type="time" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">閉店時間</label>
-            <input bind:value={bh.closeTime} type="time" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+            <label for="bh-close-time" class="block text-sm font-medium text-gray-700 mb-1">閉店時間</label>
+            <input id="bh-close-time" bind:value={bh.closeTime} type="time" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
           </div>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">ロングシフト基準時間（時間）</label>
-          <input bind:value={bh.longShiftThreshold} type="number" min="1" max="24" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+          <label for="bh-long-shift" class="block text-sm font-medium text-gray-700 mb-1">ロングシフト基準時間（時間）</label>
+          <input id="bh-long-shift" bind:value={bh.longShiftThreshold} type="number" min="1" max="24" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
           <p class="text-xs text-gray-400 mt-1">この時間以上のシフトがロングシフトと判定されます</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">最低同時勤務人数（人）</label>
-          <input bind:value={bh.minStaff} type="number" min="1" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+          <label for="bh-min-staff" class="block text-sm font-medium text-gray-700 mb-1">最低同時勤務人数（人）</label>
+          <input id="bh-min-staff" bind:value={bh.minStaff} type="number" min="1" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
           <p class="text-xs text-gray-400 mt-1">営業開始〜終了まで、常にこの人数以上が同時に勤務している状態を維持します</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">最高同時勤務人数（人）</label>
-          <input bind:value={bh.maxStaff} type="number" min="1" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+          <label for="bh-max-staff" class="block text-sm font-medium text-gray-700 mb-1">最高同時勤務人数（人）</label>
+          <input id="bh-max-staff" bind:value={bh.maxStaff} type="number" min="1" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
           <p class="text-xs text-gray-400 mt-1">同時に勤務できる人数の上限です</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">固定プロンプト</label>
-          <textarea bind:value={bh.fixedPrompt} rows="4"
+          <label for="bh-fixed-prompt" class="block text-sm font-medium text-gray-700 mb-1">固定プロンプト</label>
+          <textarea id="bh-fixed-prompt" bind:value={bh.fixedPrompt} rows="4"
             placeholder="例: 土日は必ず2人以上配置すること。Aさんは週3日以内にすること。"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-gray-300 resize-none"></textarea>
           <p class="text-xs text-gray-400 mt-1">毎月のシフト生成時に常に適用される指示です。空欄の場合は適用されません。</p>
