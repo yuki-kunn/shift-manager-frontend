@@ -148,7 +148,7 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">シフト優先度</label>
+          <p class="block text-sm font-medium text-gray-700 mb-1">シフト優先度</p>
           <div class="grid grid-cols-3 gap-2">
             {#each ([['high', '高', 'border-red-400 bg-red-50 text-red-700'], ['medium', '中', 'border-yellow-400 bg-yellow-50 text-yellow-700'], ['low', '低', 'border-gray-300 bg-gray-50 text-gray-500']] as const) as [val, label, cls]}
               <button type="button" onclick={() => form.priority = val}
@@ -191,7 +191,7 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">カレンダー表示色</label>
+          <p class="block text-sm font-medium text-gray-700 mb-2">カレンダー表示色</p>
           <div class="flex flex-wrap gap-2">
             {#each COLORS as c}
               <button type="button" onclick={() => form.color = c}
