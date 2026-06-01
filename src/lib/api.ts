@@ -41,12 +41,13 @@ export interface Schedule {
 }
 
 export interface EventMember {
-  id: string; eventId: string; employeeId: string; note: string | null;
-  startTime: string | null; endTime: string | null; createdAt: string;
+  id: string; eventId: string; employeeId: string; note: string | null; createdAt: string;
 }
 export interface CalendarEvent {
   id: string; facilityId: string; date: string; title: string;
-  description: string | null; color: string; createdAt: string; updatedAt: string;
+  description: string | null; color: string;
+  startTime: string | null; endTime: string | null;
+  createdAt: string; updatedAt: string;
   members: EventMember[];
 }
 
@@ -138,14 +139,14 @@ export const api = {
   events: {
     list: (year: number, month: number) =>
       fetchJson<CalendarEvent[]>(`/events?year=${year}&month=${month}`),
-    create: (data: { date: string; title: string; description?: string; color?: string }) =>
+    create: (data: { date: string; title: string; description?: string; color?: string; startTime?: string; endTime?: string }) =>
       fetchJson<CalendarEvent>('/events', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: { date: string; title: string; description?: string; color?: string }) =>
+    update: (id: string, data: { date: string; title: string; description?: string; color?: string; startTime?: string; endTime?: string }) =>
       fetchJson<CalendarEvent>(`/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
       fetchJson<{ success: boolean }>(`/events/${id}`, { method: 'DELETE' }),
-    addMember: (eventId: string, employeeId: string, note?: string, startTime?: string, endTime?: string) =>
-      fetchJson<EventMember>(`/events/${eventId}/members`, { method: 'POST', body: JSON.stringify({ employeeId, note, startTime, endTime }) }),
+    addMember: (eventId: string, employeeId: string, note?: string) =>
+      fetchJson<EventMember>(`/events/${eventId}/members`, { method: 'POST', body: JSON.stringify({ employeeId, note }) }),
     removeMember: (eventId: string, memberId: string) =>
       fetchJson<{ success: boolean }>(`/events/${eventId}/members/${memberId}`, { method: 'DELETE' }),
   },

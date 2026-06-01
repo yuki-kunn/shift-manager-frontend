@@ -77,6 +77,15 @@
 
   async function addSlot() {
     if (!schedule || !selectedDate || !newForm.employeeId || !newForm.startTime || !newForm.endTime) return;
+    // フロント側重複チェック（同一日・同一従業員）
+    const already = schedule.slots.some(
+      s => s.employeeId === newForm.employeeId && s.date === selectedDate
+    );
+    if (already) {
+      const emp = getEmployee(newForm.employeeId);
+      showToast(`${emp?.name ?? 'このスタッフ'}はすでにこの日にシフトが登録されています`, 'error');
+      return;
+    }
     try {
       const added = await api.schedules.addSlot(schedule.id, {
         employeeId: newForm.employeeId, date: selectedDate,
@@ -87,7 +96,16 @@
       addingNew = false;
       newForm = { employeeId: $employees[0]?.id ?? '', startTime: '', endTime: '', note: '' };
       showToast('シフトを追加しました', 'success');
-    } catch { showToast('追加に失敗しました', 'error'); }
+    } catch (e: any) {
+      // バックエンドの重複エラー(409)も拾う
+      const msg = e?.message ?? '';
+      if (msg.includes('409') || msg.includes('duplicate')) {
+        const emp = getEmployee(newForm.employeeId);
+        showToast(`${emp?.name ?? 'このスタッフ'}はすでにこの日にシフトが登録されています`, 'error');
+      } else {
+        showToast('追加に失敗しました', 'error');
+      }
+    }
   }
 
   // 出勤人数から重要度カラーを返す（セル背景色）
@@ -431,7 +449,8 @@
         {#if addingNew && schedule}
           <div class="border-2 border-indigo-200 border-dashed rounded-xl p-3 space-y-2 bg-indigo-50/30">
             <p class="text-xs font-semibold text-indigo-700">シフトを追加</p>
-            <select bind:value={newForm.employeeId}
+            <label for="new-slot-employee" class="sr-only">スタッフを選択</label>
+            <select id="new-slot-employee" bind:value={newForm.employeeId}
               class="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
               {#each $employees as emp}
                 <option value={emp.id}>{emp.name}</option>

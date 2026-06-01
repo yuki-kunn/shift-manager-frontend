@@ -10,14 +10,12 @@
   // モーダル状態
   let showModal = $state(false);
   let editTarget = $state<CalendarEvent | null>(null);
-  let form = $state({ date: '', title: '', description: '', color: '#6366f1' });
+  let form = $state({ date: '', title: '', description: '', color: '#6366f1', startTime: '', endTime: '' });
 
   // メンバー追加パネル
   let selectedEvent = $state<CalendarEvent | null>(null);
   let addingMemberId = $state('');
   let addingMemberNote = $state('');
-  let addingMemberStart = $state('');
-  let addingMemberEnd = $state('');
 
   const COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#06b6d4'];
   const DAY_NAMES = ['日','月','火','水','木','金','土'];
@@ -41,26 +39,43 @@
       title: '',
       description: '',
       color: '#6366f1',
+      startTime: '',
+      endTime: '',
     };
     showModal = true;
   }
 
   function openEdit(ev: CalendarEvent) {
     editTarget = ev;
-    form = { date: ev.date, title: ev.title, description: ev.description ?? '', color: ev.color };
+    form = {
+      date: ev.date,
+      title: ev.title,
+      description: ev.description ?? '',
+      color: ev.color,
+      startTime: ev.startTime ?? '',
+      endTime: ev.endTime ?? '',
+    };
     showModal = true;
   }
 
   async function save() {
     if (!form.title || !form.date) return;
+    const payload = {
+      date: form.date,
+      title: form.title,
+      description: form.description || undefined,
+      color: form.color,
+      startTime: form.startTime || undefined,
+      endTime: form.endTime || undefined,
+    };
     try {
       if (editTarget) {
-        const updated = await api.events.update(editTarget.id, form);
+        const updated = await api.events.update(editTarget.id, payload);
         events = events.map(e => e.id === updated.id ? { ...updated, members: e.members } : e);
         if (selectedEvent?.id === updated.id) selectedEvent = { ...updated, members: selectedEvent.members };
         showToast('更新しました', 'success');
       } else {
-        const created = await api.events.create(form);
+        const created = await api.events.create(payload);
         events = [...events, created].sort((a, b) => a.date.localeCompare(b.date));
         showToast('作成しました', 'success');
       }
@@ -88,16 +103,12 @@
       const member = await api.events.addMember(
         selectedEvent.id, addingMemberId,
         addingMemberNote || undefined,
-        addingMemberStart || undefined,
-        addingMemberEnd || undefined,
       );
       const updated = { ...selectedEvent, members: [...selectedEvent.members, member] };
       selectedEvent = updated;
       events = events.map(e => e.id === updated.id ? updated : e);
       addingMemberId = $employees[0]?.id ?? '';
       addingMemberNote = '';
-      addingMemberStart = '';
-      addingMemberEnd = '';
       showToast('追加しました', 'success');
     } catch { showToast('追加に失敗しました', 'error'); }
   }
@@ -182,6 +193,9 @@
                       <div class="w-3 h-3 rounded-full mt-1 flex-shrink-0" style="background-color: {ev.color}"></div>
                       <div class="min-w-0">
                         <p class="font-semibold text-gray-900 truncate">{ev.title}</p>
+                        {#if ev.startTime && ev.endTime}
+                          <p class="text-xs text-indigo-600 font-medium mt-0.5">{ev.startTime}〜{ev.endTime}</p>
+                        {/if}
                         {#if ev.description}
                           <p class="text-sm text-gray-500 mt-0.5 line-clamp-2">{ev.description}</p>
                         {/if}
@@ -220,11 +234,18 @@
         <div class="w-80 flex-shrink-0">
           <div class="bg-white rounded-xl border border-gray-100 shadow-sm sticky top-8">
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div class="flex items-center gap-2 min-w-0">
-                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {selectedEvent.color}"></div>
-                <p class="font-semibold text-gray-900 truncate">{selectedEvent.title}</p>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {selectedEvent.color}"></div>
+                  <p class="font-semibold text-gray-900 truncate">{selectedEvent.title}</p>
+                </div>
+                {#if selectedEvent.startTime && selectedEvent.endTime}
+                  <p class="text-xs text-indigo-600 font-medium mt-0.5 pl-5">{selectedEvent.startTime}〜{selectedEvent.endTime}</p>
+                {:else}
+                  <p class="text-xs text-amber-500 mt-0.5 pl-5">シフト時間未設定</p>
+                {/if}
               </div>
-              <button onclick={() => selectedEvent = null} aria-label="閉じる" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
+              <button onclick={() => selectedEvent = null} aria-label="閉じる" class="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -246,9 +267,6 @@
                       <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {memberTypeColor}"></div>
                       <div class="min-w-0">
                         <p class="text-sm font-medium text-gray-900 truncate">{emp.name}</p>
-                        {#if member.startTime && member.endTime}
-                          <p class="text-xs text-indigo-600 font-medium">{member.startTime}〜{member.endTime}</p>
-                        {/if}
                         {#if member.note}
                           <p class="text-xs text-gray-400 truncate">{member.note}</p>
                         {/if}
@@ -275,15 +293,6 @@
                   <option value={emp.id}>{emp.name}</option>
                 {/each}
               </select>
-              <div class="flex items-center gap-1.5">
-                <input id="event-member-start" type="time" bind:value={addingMemberStart}
-                  aria-label="シフト開始時間"
-                  class="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-                <span class="text-gray-400 text-xs flex-shrink-0">〜</span>
-                <input id="event-member-end" type="time" bind:value={addingMemberEnd}
-                  aria-label="シフト終了時間"
-                  class="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-              </div>
               <label for="event-member-note" class="sr-only">備考</label>
               <input id="event-member-note" type="text" bind:value={addingMemberNote} placeholder="備考（任意）"
                 class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
@@ -316,6 +325,22 @@
           <input id="event-title" bind:value={form.title} required type="text" placeholder="例: 社内研修、周年イベント"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
+
+        <!-- シフト時間（イベント単位） -->
+        <div>
+          <p class="block text-sm font-medium text-gray-700 mb-1">シフト時間（任意）</p>
+          <p class="text-xs text-gray-400 mb-2">設定するとアサイン済みスタッフがAIシフト生成時にこの時間で強制組み込まれます</p>
+          <div class="flex items-center gap-2">
+            <input id="event-start-time" type="time" bind:value={form.startTime}
+              aria-label="開始時間"
+              class="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+            <span class="text-gray-400 text-sm flex-shrink-0">〜</span>
+            <input id="event-end-time" type="time" bind:value={form.endTime}
+              aria-label="終了時間"
+              class="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+          </div>
+        </div>
+
         <div>
           <label for="event-description" class="block text-sm font-medium text-gray-700 mb-1">詳細（任意）</label>
           <textarea id="event-description" bind:value={form.description} rows="3" placeholder="イベントの詳細や備考を入力"
