@@ -28,6 +28,23 @@
     endTime: $businessHours?.closeTime ?? '',
   });
 
+  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+  let empSort = $state<'default' | 'name_asc' | 'name_desc' | 'registered' | 'priority'>('default');
+
+  let sortedEmployees = $derived.by(() => {
+    const list = [...$employees];
+    if (empSort === 'name_asc') return list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    if (empSort === 'name_desc') return list.sort((a, b) => b.name.localeCompare(a.name, 'ja'));
+    if (empSort === 'registered') return list.sort((a, b) => {
+      const ra = (registeredMap.get(a.id) ?? 0) > 0 ? 1 : 0;
+      const rb = (registeredMap.get(b.id) ?? 0) > 0 ? 1 : 0;
+      return ra - rb;
+    });
+    if (empSort === 'priority') return list.sort((a, b) => PRIORITY_ORDER[a.priority ?? 'medium'] - PRIORITY_ORDER[b.priority ?? 'medium']);
+    return list;
+  });
+
   let selectedEmployeeId = $state('');
   let saving = $state(false);
   let dowSettings = $state<DayOfWeekSetting[]>(Array.from({ length: 7 }, defaultDow));
@@ -72,10 +89,6 @@
   }
 
   function selectEmployee(id: string) {
-    const count = registeredMap.get(id) ?? 0;
-    if (count > 0 && id !== selectedEmployeeId) {
-      if (!confirm(`この従業員はすでに${count}日分の希望シフトが登録されています。\n上書きしますか？`)) return;
-    }
     selectedEmployeeId = id;
   }
 
@@ -154,6 +167,10 @@
 
   async function save() {
     if (!selectedEmployeeId) return;
+    const count = registeredMap.get(selectedEmployeeId) ?? 0;
+    if (count > 0) {
+      if (!confirm(`この従業員はすでに${count}日分の希望シフトが登録されています。\n上書きしますか？`)) return;
+    }
     const expanded = expandToMonth();
     if (expanded.size === 0) {
       showToast('曜日を1つ以上有効にしてください', 'info');
@@ -192,6 +209,15 @@
     <div class="px-4 py-4 border-b border-gray-100">
       <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">従業員</h2>
       <p class="text-xs text-gray-400 mt-0.5">{$selectedYear}年{$selectedMonth}月</p>
+      <label for="emp-sort" class="sr-only">並び替え</label>
+      <select id="emp-sort" bind:value={empSort}
+        class="mt-2 w-full text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400">
+        <option value="default">登録順</option>
+        <option value="name_asc">名前順（あ→ん）</option>
+        <option value="name_desc">名前順（ん→あ）</option>
+        <option value="registered">未登録優先</option>
+        <option value="priority">優先度順</option>
+      </select>
     </div>
     <div class="flex-1 overflow-y-auto py-2">
       {#if $employees.length === 0}
@@ -200,7 +226,7 @@
           <a href="/employees" class="mt-2 inline-block text-xs text-indigo-600 hover:underline">登録する →</a>
         </div>
       {:else}
-        {#each $employees as emp}
+        {#each sortedEmployees as emp}
           {@const registered = (registeredMap.get(emp.id) ?? 0) > 0}
           {@const isSelected = selectedEmployeeId === emp.id}
           <button

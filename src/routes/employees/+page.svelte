@@ -9,6 +9,25 @@
     medium: 'bg-yellow-100 text-yellow-700',
     low: 'bg-gray-100 text-gray-500',
   };
+  const PRIORITY_ORDER: Record<EmployeePriority, number> = { high: 0, medium: 1, low: 2 };
+
+  let sortKey = $state<'name' | 'type' | 'priority'>('name');
+  let sortDir = $state<'asc' | 'desc'>('asc');
+
+  function toggleSort(key: typeof sortKey) {
+    if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = key; sortDir = 'asc'; }
+  }
+
+  let sortedEmployees = $derived.by(() => {
+    return [...$employees].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'name') cmp = a.name.localeCompare(b.name, 'ja');
+      else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
+      else if (sortKey === 'priority') cmp = PRIORITY_ORDER[(a.priority ?? 'medium') as EmployeePriority] - PRIORITY_ORDER[(b.priority ?? 'medium') as EmployeePriority];
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  });
 
   let showModal = $state(false);
   let editTarget = $state<Employee | null>(null);
@@ -73,9 +92,36 @@
       <table class="w-full">
         <thead class="bg-gray-50">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">名前</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">種別</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">優先度</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <button onclick={() => toggleSort('name')} class="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                名前
+                {#if sortKey === 'name'}
+                  <span class="text-indigo-500">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                {:else}
+                  <span class="text-gray-300">▲</span>
+                {/if}
+              </button>
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <button onclick={() => toggleSort('type')} class="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                種別
+                {#if sortKey === 'type'}
+                  <span class="text-indigo-500">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                {:else}
+                  <span class="text-gray-300">▲</span>
+                {/if}
+              </button>
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <button onclick={() => toggleSort('priority')} class="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                優先度
+                {#if sortKey === 'priority'}
+                  <span class="text-indigo-500">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                {:else}
+                  <span class="text-gray-300">▲</span>
+                {/if}
+              </button>
+            </th>
             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">時給</th>
             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">収入下限</th>
             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">収入上限</th>
@@ -83,7 +129,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
-          {#each $employees as emp}
+          {#each sortedEmployees as emp}
             {@const priority = (emp.priority ?? 'medium') as EmployeePriority}
             {@const typeColor = $employeeTypes.find(t => t.name === emp.type)?.color ?? '#6366f1'}
             <tr class="hover:bg-gray-50 transition-colors">
