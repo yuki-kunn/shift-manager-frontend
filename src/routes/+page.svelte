@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { employees, selectedYear, selectedMonth, currentSchedule, showToast } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, showToast, employeeTypeMap } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { Schedule } from '$lib/api.js';
-  import { calcHours, calcMonthlySalary, EMPLOYEE_TYPE_LABELS, EMPLOYEE_TYPE_COLORS } from '$lib/utils.js';
+  import { calcHours, calcMonthlySalary } from '$lib/utils.js';
 
   let schedule = $state<Schedule | null>(null);
   let generating = $state(false);
@@ -16,7 +16,6 @@
     try {
       const list = await api.schedules.list($selectedYear, $selectedMonth);
       schedule = list[0] ?? null;
-      currentSchedule.set(schedule);
     } catch {}
   }
 
@@ -25,7 +24,6 @@
     try {
       const s = await api.ai.generateSchedule($selectedYear, $selectedMonth, generationNote || undefined);
       schedule = s;
-      currentSchedule.set(s);
       showToast('シフトを生成しました！', 'success');
     } catch { showToast('シフト生成に失敗しました', 'error'); }
     finally { generating = false; }
@@ -106,8 +104,8 @@
           {#each $employees as emp}
             {@const hours = getEmployeeHours(emp.id)}
             {@const salary = calcMonthlySalary(hours, emp.hourlyWage)}
-            {@const over = (emp.type === 'intern' || emp.type === 'part') && salary > 50000}
-            {@const under = (emp.type === 'intern' || emp.type === 'part') && hours > 0 && salary < 30000}
+            {@const over = emp.incomeUpper != null && salary > emp.incomeUpper}
+            {@const under = emp.incomeLower != null && hours > 0 && salary < emp.incomeLower}
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
@@ -116,8 +114,10 @@
                 </div>
               </td>
               <td class="px-6 py-4">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {EMPLOYEE_TYPE_COLORS[emp.type]}">
-                  {EMPLOYEE_TYPE_LABELS[emp.type]}
+                {@const empType = $employeeTypeMap.get(emp.type)}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white"
+                  style="background-color: {empType?.color ?? '#6366f1'}">
+                  {emp.type || '未設定'}
                 </span>
               </td>
               <td class="px-6 py-4 text-right font-medium text-gray-900">{hours.toFixed(1)}h</td>
