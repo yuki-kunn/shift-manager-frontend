@@ -22,7 +22,7 @@
   let sortedEmployees = $derived.by(() => {
     return [...$employees].sort((a, b) => {
       let cmp = 0;
-      if (sortKey === 'name') cmp = a.name.localeCompare(b.name, 'ja');
+      if (sortKey === 'name') cmp = (a.reading ?? a.name).localeCompare(b.reading ?? b.name, 'ja');
       else if (sortKey === 'reading') cmp = (a.reading ?? a.name).localeCompare(b.reading ?? b.name, 'ja');
       else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
       else if (sortKey === 'priority') cmp = PRIORITY_ORDER[(a.priority ?? 'medium') as EmployeePriority] - PRIORITY_ORDER[(b.priority ?? 'medium') as EmployeePriority];

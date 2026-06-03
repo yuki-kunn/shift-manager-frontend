@@ -34,8 +34,8 @@
 
   let sortedEmployees = $derived.by(() => {
     const list = [...$employees];
-    if (empSort === 'name_asc') return list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-    if (empSort === 'name_desc') return list.sort((a, b) => b.name.localeCompare(a.name, 'ja'));
+    if (empSort === 'name_asc') return list.sort((a, b) => (a.reading ?? a.name).localeCompare(b.reading ?? b.name, 'ja'));
+    if (empSort === 'name_desc') return list.sort((a, b) => (b.reading ?? b.name).localeCompare(a.reading ?? a.name, 'ja'));
     if (empSort === 'registered') return list.sort((a, b) => {
       const ra = (registeredMap.get(a.id) ?? 0) > 0 ? 1 : 0;
       const rb = (registeredMap.get(b.id) ?? 0) > 0 ? 1 : 0;
