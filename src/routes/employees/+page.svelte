@@ -11,7 +11,7 @@
   };
   const PRIORITY_ORDER: Record<EmployeePriority, number> = { high: 0, medium: 1, low: 2 };
 
-  let sortKey = $state<'name' | 'type' | 'priority'>('name');
+  let sortKey = $state<'name' | 'reading' | 'type' | 'priority'>('name');
   let sortDir = $state<'asc' | 'desc'>('asc');
 
   function toggleSort(key: typeof sortKey) {
@@ -23,6 +23,7 @@
     return [...$employees].sort((a, b) => {
       let cmp = 0;
       if (sortKey === 'name') cmp = a.name.localeCompare(b.name, 'ja');
+      else if (sortKey === 'reading') cmp = (a.reading ?? a.name).localeCompare(b.reading ?? b.name, 'ja');
       else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
       else if (sortKey === 'priority') cmp = PRIORITY_ORDER[(a.priority ?? 'medium') as EmployeePriority] - PRIORITY_ORDER[(b.priority ?? 'medium') as EmployeePriority];
       return sortDir === 'asc' ? cmp : -cmp;
@@ -32,30 +33,32 @@
   let showModal = $state(false);
   let editTarget = $state<Employee | null>(null);
   let form = $state({
-    name: '', type: '', hourlyWage: 1177, priority: 'medium' as EmployeePriority,
+    name: '', reading: null as string | null, type: '', hourlyWage: 1177,
+    priority: 'medium' as EmployeePriority,
     incomeLower: null as number | null, incomeUpper: null as number | null,
   });
 
   function openAdd() {
     editTarget = null;
-    form = { name: '', type: $employeeTypes[0]?.name ?? '', hourlyWage: 1177, priority: 'medium', incomeLower: null, incomeUpper: null };
+    form = { name: '', reading: null, type: $employeeTypes[0]?.name ?? '', hourlyWage: 1177, priority: 'medium', incomeLower: null, incomeUpper: null };
     showModal = true;
   }
   function openEdit(emp: Employee) {
     editTarget = emp;
-    form = { name: emp.name, type: emp.type, hourlyWage: emp.hourlyWage, priority: emp.priority ?? 'medium', incomeLower: emp.incomeLower ?? null, incomeUpper: emp.incomeUpper ?? null };
+    form = { name: emp.name, reading: emp.reading ?? null, type: emp.type, hourlyWage: emp.hourlyWage, priority: emp.priority ?? 'medium', incomeLower: emp.incomeLower ?? null, incomeUpper: emp.incomeUpper ?? null };
     showModal = true;
   }
   async function save() {
     // typeColorを自動設定
     const typeColor = $employeeTypes.find(t => t.name === form.type)?.color ?? '#6366f1';
     try {
+      const payload = { ...form, reading: form.reading || null, color: typeColor };
       if (editTarget) {
-        const updated = await api.employees.update(editTarget.id, { ...form, color: typeColor });
+        const updated = await api.employees.update(editTarget.id, payload);
         employees.update(list => list.map(e => e.id === updated.id ? updated : e));
         showToast('更新しました', 'success');
       } else {
-        const created = await api.employees.create({ ...form, color: typeColor });
+        const created = await api.employees.create(payload);
         employees.update(list => [...list, created]);
         showToast('追加しました', 'success');
       }
@@ -89,6 +92,21 @@
     {#if $employees.length === 0}
       <div class="p-12 text-center text-gray-400">従業員がいません。追加してください。</div>
     {:else}
+      <div class="px-6 py-3 border-b border-gray-100 flex items-center gap-3">
+        <span class="text-xs text-gray-500">並び替え:</span>
+        <label for="emp-table-sort" class="sr-only">並び替え</label>
+        <select id="emp-table-sort" bind:value={sortKey}
+          class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400">
+          <option value="name">名前順</option>
+          <option value="reading">読み仮名順</option>
+          <option value="type">種別順</option>
+          <option value="priority">優先度順</option>
+        </select>
+        <button onclick={() => sortDir = sortDir === 'asc' ? 'desc' : 'asc'}
+          class="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
+          {sortDir === 'asc' ? '昇順 ▲' : '降順 ▼'}
+        </button>
+      </div>
       <table class="w-full">
         <thead class="bg-gray-50">
           <tr>
@@ -136,7 +154,12 @@
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                   <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {typeColor}"></div>
-                  <span class="font-medium text-gray-900">{emp.name}</span>
+                  <div>
+                    <span class="font-medium text-gray-900">{emp.name}</span>
+                    {#if emp.reading}
+                      <p class="text-xs text-gray-400">{emp.reading}</p>
+                    {/if}
+                  </div>
                 </div>
               </td>
               <td class="px-6 py-4">
@@ -180,6 +203,13 @@
         <div>
           <label for="emp-name" class="block text-sm font-medium text-gray-700 mb-1">名前 <span class="text-red-500">*</span></label>
           <input id="emp-name" bind:value={form.name} required type="text" placeholder="山田 太郎"
+            class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+        </div>
+        <div>
+          <label for="emp-reading" class="block text-sm font-medium text-gray-700 mb-1">読み仮名（任意）</label>
+          <input id="emp-reading"
+            bind:value={form.reading}
+            type="text" placeholder="例: やまだ たろう"
             class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
         <div>

@@ -235,7 +235,12 @@
               {isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'}"
           >
             <div class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: {emp.color}"></div>
-            <span class="flex-1 text-sm font-medium truncate">{emp.name}</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate">{emp.name}</p>
+              {#if emp.reading}
+                <p class="text-xs text-gray-400 truncate">{emp.reading}</p>
+              {/if}
+            </div>
             {#if registered}
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" title="登録済"></span>
             {/if}

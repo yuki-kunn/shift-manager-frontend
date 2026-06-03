@@ -18,7 +18,7 @@ export interface EmployeeType {
 export type EmployeePriority = 'high' | 'medium' | 'low';
 
 export interface Employee {
-  id: string; name: string; type: string;
+  id: string; name: string; reading: string | null; type: string;
   hourlyWage: number; color: string;
   priority: EmployeePriority;
   incomeLower: number | null;
