@@ -106,6 +106,7 @@
             {@const salary = calcMonthlySalary(hours, emp.hourlyWage)}
             {@const over = emp.incomeUpper != null && salary > emp.incomeUpper}
             {@const under = emp.incomeLower != null && hours > 0 && salary < emp.incomeLower}
+            {@const empType = $employeeTypeMap.get(emp.type)}
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
@@ -114,7 +115,6 @@
                 </div>
               </td>
               <td class="px-6 py-4">
-                {@const empType = $employeeTypeMap.get(emp.type)}
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white"
                   style="background-color: {empType?.color ?? '#6366f1'}">
                   {emp.type || '未設定'}
