@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { employees, selectedYear, selectedMonth, showToast, businessHours, employeeTypes } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, showToast, businessHours, employeeTypes, employeeTypeMap } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { ShiftRequest } from '$lib/api.js';
   import { getDaysInMonth } from '$lib/utils.js';
@@ -265,7 +265,7 @@
   {:else}
     {@const emp = $employees.find(e => e.id === selectedEmployeeId)}
     {#if emp}
-      {@const empType = $employeeTypes.find(t => t.name === emp.type)}
+      {@const empType = $employeeTypeMap.get(emp.type)}
       <div class="flex-1 flex overflow-hidden">
 
         <!-- 中: 入力フォーム -->

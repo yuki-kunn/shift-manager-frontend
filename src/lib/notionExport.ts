@@ -1,16 +1,8 @@
-import type { Schedule, ScheduleSlot, Employee } from './api.js';
+import type { Schedule, Employee } from './api.js';
+import { BASE, getToken } from './api.js';
 
-const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') + '/api';
-
-// テスト用DBのID（シフト管理ページ配下の「シフトテスト」データベース）
+// TODO: 本番環境では環境変数（VITE_NOTION_DB_ID 等）から取得するよう変更すること
 const TEST_DB_ID = 'fe0a4a08c38246e6aa7ee55b443e5ad9';
-
-function getToken(): string | null {
-  if (typeof localStorage === 'undefined') return null;
-  const raw = localStorage.getItem('auth');
-  if (!raw) return null;
-  try { return JSON.parse(raw)?.token ?? null; } catch { return null; }
-}
 
 async function notionPost(path: string, body: object) {
   const token = getToken();

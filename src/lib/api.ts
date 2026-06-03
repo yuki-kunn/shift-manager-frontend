@@ -1,6 +1,6 @@
-const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') + '/api';
+export const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') + '/api';
 
-function getToken(): string | null {
+export function getToken(): string | null {
   if (typeof localStorage === 'undefined') return null;
   const raw = localStorage.getItem('auth');
   if (!raw) return null;

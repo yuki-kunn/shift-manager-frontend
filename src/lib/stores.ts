@@ -1,9 +1,15 @@
-import { writable } from 'svelte/store';
-import type { Employee, BusinessHours, Schedule, EmployeeType } from './api.js';
+import { writable, derived } from 'svelte/store';
+import type { Employee, BusinessHours, EmployeeType } from './api.js';
 
 function persistedWritable<T>(key: string, initial: T) {
-  const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
-  const store = writable<T>(stored !== null ? JSON.parse(stored) : initial);
+  let parsed: T = initial;
+  if (typeof localStorage !== 'undefined') {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) {
+      try { parsed = JSON.parse(raw); } catch { /* 破損データは無視して初期値を使用 */ }
+    }
+  }
+  const store = writable<T>(parsed);
   store.subscribe(v => {
     if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(v));
   });
@@ -26,7 +32,10 @@ export function logout() {
 export const employees = writable<Employee[]>([]);
 export const businessHours = writable<BusinessHours | null>(null);
 export const employeeTypes = writable<EmployeeType[]>([]);
-export const currentSchedule = writable<Schedule | null>(null);
+/** 従業員種別名 → EmployeeType の Map。linear search の代わりに各ページで利用する */
+export const employeeTypeMap = derived(employeeTypes, $types =>
+  new Map<string, EmployeeType>($types.map(t => [t.name, t]))
+);
 export const toast = writable<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
 const now = new Date();

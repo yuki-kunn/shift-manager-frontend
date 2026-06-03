@@ -6,9 +6,6 @@ export function calcHours(start: string, end: string): number {
 export function calcMonthlySalary(hours: number, wage: number): number {
   return Math.round(hours * wage);
 }
-// 後方互換のために残すが非推奨
-export const EMPLOYEE_TYPE_LABELS: Record<string, string> = {};
-export const EMPLOYEE_TYPE_COLORS: Record<string, string> = {};
 export function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }

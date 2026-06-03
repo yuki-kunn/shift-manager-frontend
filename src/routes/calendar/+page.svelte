@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { employees, selectedYear, selectedMonth, currentSchedule, showToast, employeeTypes } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, showToast, employeeTypeMap } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { Schedule, ScheduleSlot } from '$lib/api.js';
   import { getDaysInMonth, getDateString, calcHours } from '$lib/utils.js';
@@ -28,7 +28,6 @@
         api.events.list($selectedYear, $selectedMonth),
       ]);
       schedule = list[0] ?? null;
-      currentSchedule.set(schedule);
       calendarEvents = evs;
     } catch {}
   }
@@ -90,7 +89,6 @@
       const added = await api.schedules.addSlot(schedule.id, {
         employeeId: newForm.employeeId, date: selectedDate,
         startTime: newForm.startTime, endTime: newForm.endTime, note: newForm.note || null,
-        createdAt: '', updatedAt: '',
       });
       schedule = { ...schedule, slots: [...schedule.slots, added] };
       addingNew = false;
@@ -327,7 +325,7 @@
                   {@const emp = getEmployee(slot.employeeId)}
                   {#if emp}
                     {@const isEventStaff = dayEvents.some(ev => ev.members.some(m => m.employeeId === slot.employeeId))}
-                    {@const typeColor = $employeeTypes.find(t => t.name === emp.type)?.color ?? '#6366f1'}
+                    {@const typeColor = $employeeTypeMap.get(emp.type)?.color ?? '#6366f1'}
                     {@const slotColor = isEventStaff ? '#ef4444' : typeColor}
                     <div class="text-xs px-1.5 py-0.5 rounded-md font-medium text-white truncate" style="background-color: {slotColor}">
                       {emp.name} {slot.startTime}〜{slot.endTime}

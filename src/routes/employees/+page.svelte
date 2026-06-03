@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { employees, showToast, employeeTypes } from '$lib/stores.js';
+  import { employees, showToast, employeeTypes, employeeTypeMap } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { Employee, EmployeeType, EmployeePriority } from '$lib/api.js';
 
@@ -118,7 +118,7 @@
     showModal = true;
   }
   async function save() {
-    const typeColor = $employeeTypes.find(t => t.name === form.type)?.color ?? '#6366f1';
+    const typeColor = $employeeTypeMap.get(form.type)?.color ?? '#6366f1';
     try {
       const payload = { ...form, reading: form.reading || null, color: typeColor };
       if (editTarget) {
@@ -254,7 +254,7 @@
         <tbody class="divide-y divide-gray-50">
           {#each sortedEmployees as emp}
             {@const priority = (emp.priority ?? 'medium') as EmployeePriority}
-            {@const typeColor = $employeeTypes.find(t => t.name === emp.type)?.color ?? '#6366f1'}
+            {@const typeColor = $employeeTypeMap.get(emp.type)?.color ?? '#6366f1'}
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
