@@ -11,22 +11,92 @@
   };
   const PRIORITY_ORDER: Record<EmployeePriority, number> = { high: 0, medium: 1, low: 2 };
 
-  let sortKey = $state<'name' | 'type' | 'priority'>('name');
-  let sortDir = $state<'asc' | 'desc'>('asc');
+  type SortKey = 'name' | 'type' | 'priority';
+  type SortDir = 'asc' | 'desc';
+  type SortCondition = { key: SortKey; dir: SortDir };
 
-  function toggleSort(key: typeof sortKey) {
-    if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-    else { sortKey = key; sortDir = 'asc'; }
+  const SORT_KEY_LABELS: Record<SortKey, string> = { name: '名前', type: '種別', priority: '優先度' };
+  const STORAGE_KEY = 'emp-sort';
+
+  function loadSortConditions(): SortCondition[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [{ key: 'name', dir: 'asc' }];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+    return [{ key: 'name', dir: 'asc' }];
+  }
+
+  function saveSortConditions(conditions: SortCondition[]) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(conditions));
+  }
+
+  let sortConditions = $state<SortCondition[]>(loadSortConditions());
+
+  // 追加ドロップダウン用
+  let addKey = $state<SortKey>('type');
+
+  // ヘッダークリック: 1番目の条件を操作（同キーなら昇降切替、別キーなら新たな1番目に）
+  function toggleSort(key: SortKey) {
+    const first = sortConditions[0];
+    let next: SortCondition[];
+    if (first?.key === key) {
+      next = [{ key, dir: first.dir === 'asc' ? 'desc' : 'asc' }, ...sortConditions.slice(1)];
+    } else {
+      // 既存条件から同キーを除去して先頭に追加
+      next = [{ key, dir: 'asc' }, ...sortConditions.filter(c => c.key !== key)];
+    }
+    sortConditions = next;
+    saveSortConditions(next);
+  }
+
+  // 条件の昇降順を切り替え
+  function toggleDir(idx: number) {
+    const next = sortConditions.map((c, i) =>
+      i === idx ? { ...c, dir: c.dir === 'asc' ? 'desc' as SortDir : 'asc' as SortDir } : c
+    );
+    sortConditions = next;
+    saveSortConditions(next);
+  }
+
+  // 条件を削除（最低1つは残す）
+  function removeCondition(idx: number) {
+    if (sortConditions.length <= 1) return;
+    const next = sortConditions.filter((_, i) => i !== idx);
+    sortConditions = next;
+    saveSortConditions(next);
+  }
+
+  // 条件を追加（既に同キーがあれば追加しない）
+  function addCondition() {
+    if (sortConditions.some(c => c.key === addKey)) return;
+    const next = [...sortConditions, { key: addKey, dir: 'asc' as SortDir }];
+    sortConditions = next;
+    saveSortConditions(next);
+    // 追加後は未使用のキーに切り替え
+    const unused = (['name', 'type', 'priority'] as SortKey[]).find(k => !next.some(c => c.key === k));
+    if (unused) addKey = unused;
+  }
+
+  // 追加可能なキー一覧（まだ条件に含まれていないもの）
+  let availableKeys = $derived(
+    (['name', 'type', 'priority'] as SortKey[]).filter(k => !sortConditions.some(c => c.key === k))
+  );
+
+  function compareEmployees(a: Employee, b: Employee, conditions: SortCondition[]): number {
+    for (const { key, dir } of conditions) {
+      let cmp = 0;
+      if (key === 'name') cmp = (a.reading ?? a.name).localeCompare(b.reading ?? b.name, 'ja');
+      else if (key === 'type') cmp = a.type.localeCompare(b.type, 'ja');
+      else if (key === 'priority') cmp = PRIORITY_ORDER[(a.priority ?? 'medium') as EmployeePriority] - PRIORITY_ORDER[(b.priority ?? 'medium') as EmployeePriority];
+      if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+    }
+    return 0;
   }
 
   let sortedEmployees = $derived.by(() => {
-    return [...$employees].sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === 'name') cmp = (a.reading ?? a.name).localeCompare(b.reading ?? b.name, 'ja');
-else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
-      else if (sortKey === 'priority') cmp = PRIORITY_ORDER[(a.priority ?? 'medium') as EmployeePriority] - PRIORITY_ORDER[(b.priority ?? 'medium') as EmployeePriority];
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
+    return [...$employees].sort((a, b) => compareEmployees(a, b, sortConditions));
   });
 
   let showModal = $state(false);
@@ -48,7 +118,6 @@ else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
     showModal = true;
   }
   async function save() {
-    // typeColorを自動設定
     const typeColor = $employeeTypes.find(t => t.name === form.type)?.color ?? '#6366f1';
     try {
       const payload = { ...form, reading: form.reading || null, color: typeColor };
@@ -91,29 +160,60 @@ else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
     {#if $employees.length === 0}
       <div class="p-12 text-center text-gray-400">従業員がいません。追加してください。</div>
     {:else}
-      <div class="px-6 py-3 border-b border-gray-100 flex items-center gap-3">
-        <span class="text-xs text-gray-500">並び替え:</span>
-        <label for="emp-table-sort" class="sr-only">並び替え</label>
-        <select id="emp-table-sort" bind:value={sortKey}
-          class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400">
-          <option value="name">名前順</option>
+      <!-- ソート条件バー -->
+      <div class="px-6 py-3 border-b border-gray-100 flex flex-wrap items-center gap-2">
+        <span class="text-xs text-gray-500 shrink-0">並び替え:</span>
 
-          <option value="type">種別順</option>
-          <option value="priority">優先度順</option>
-        </select>
-        <button onclick={() => sortDir = sortDir === 'asc' ? 'desc' : 'asc'}
-          class="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
-          {sortDir === 'asc' ? '昇順 ▲' : '降順 ▼'}
-        </button>
+        <!-- 現在の条件バッジ -->
+        {#each sortConditions as cond, idx}
+          <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg
+            {idx === 0 ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-600 border border-gray-200'}">
+            {#if idx > 0}
+              <span class="text-gray-400 mr-0.5">→</span>
+            {/if}
+            <span>{SORT_KEY_LABELS[cond.key]}</span>
+            <button onclick={() => toggleDir(idx)}
+              class="hover:text-indigo-600 transition-colors font-bold"
+              title="{cond.dir === 'asc' ? '昇順' : '降順'}（クリックで切替）">
+              {cond.dir === 'asc' ? '▲' : '▼'}
+            </button>
+            {#if sortConditions.length > 1}
+              <button onclick={() => removeCondition(idx)}
+                class="ml-0.5 hover:text-red-500 transition-colors leading-none"
+                title="この条件を削除">×</button>
+            {/if}
+          </span>
+        {/each}
+
+        <!-- 条件追加 -->
+        {#if availableKeys.length > 0}
+          <div class="flex items-center gap-1">
+            <label for="sort-add-key" class="sr-only">追加する並び順</label>
+            <select id="sort-add-key" bind:value={addKey}
+              class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400">
+              {#each availableKeys as k}
+                <option value={k}>{SORT_KEY_LABELS[k]}</option>
+              {/each}
+            </select>
+            <button onclick={addCondition}
+              class="text-xs text-indigo-600 border border-indigo-200 rounded-lg px-2 py-1 hover:bg-indigo-50 transition-colors">
+              + 追加
+            </button>
+          </div>
+        {/if}
       </div>
+
       <table class="w-full">
         <thead class="bg-gray-50">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
               <button onclick={() => toggleSort('name')} class="flex items-center gap-1 hover:text-gray-700 transition-colors">
                 名前
-                {#if sortKey === 'name'}
-                  <span class="text-indigo-500">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                {#if sortConditions[0]?.key === 'name'}
+                  <span class="text-indigo-500">{sortConditions[0].dir === 'asc' ? '▲' : '▼'}</span>
+                {:else if sortConditions.some(c => c.key === 'name')}
+                  {@const idx = sortConditions.findIndex(c => c.key === 'name')}
+                  <span class="text-gray-400 text-[10px]">{idx + 1}{sortConditions[idx].dir === 'asc' ? '▲' : '▼'}</span>
                 {:else}
                   <span class="text-gray-300">▲</span>
                 {/if}
@@ -122,8 +222,11 @@ else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
               <button onclick={() => toggleSort('type')} class="flex items-center gap-1 hover:text-gray-700 transition-colors">
                 種別
-                {#if sortKey === 'type'}
-                  <span class="text-indigo-500">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                {#if sortConditions[0]?.key === 'type'}
+                  <span class="text-indigo-500">{sortConditions[0].dir === 'asc' ? '▲' : '▼'}</span>
+                {:else if sortConditions.some(c => c.key === 'type')}
+                  {@const idx = sortConditions.findIndex(c => c.key === 'type')}
+                  <span class="text-gray-400 text-[10px]">{idx + 1}{sortConditions[idx].dir === 'asc' ? '▲' : '▼'}</span>
                 {:else}
                   <span class="text-gray-300">▲</span>
                 {/if}
@@ -132,8 +235,11 @@ else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
               <button onclick={() => toggleSort('priority')} class="flex items-center gap-1 hover:text-gray-700 transition-colors">
                 優先度
-                {#if sortKey === 'priority'}
-                  <span class="text-indigo-500">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                {#if sortConditions[0]?.key === 'priority'}
+                  <span class="text-indigo-500">{sortConditions[0].dir === 'asc' ? '▲' : '▼'}</span>
+                {:else if sortConditions.some(c => c.key === 'priority')}
+                  {@const idx = sortConditions.findIndex(c => c.key === 'priority')}
+                  <span class="text-gray-400 text-[10px]">{idx + 1}{sortConditions[idx].dir === 'asc' ? '▲' : '▼'}</span>
                 {:else}
                   <span class="text-gray-300">▲</span>
                 {/if}
