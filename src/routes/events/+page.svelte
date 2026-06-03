@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { employees, selectedYear, selectedMonth, showToast, employeeTypes } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, showToast, employeeTypeMap } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { CalendarEvent } from '$lib/api.js';
 
@@ -11,6 +11,8 @@
   let showModal = $state(false);
   let editTarget = $state<CalendarEvent | null>(null);
   let form = $state({ date: '', title: '', description: '', color: '#6366f1', startTime: '', endTime: '' });
+  // 新規作成時にアサインする従業員ID一覧
+  let selectedMemberIds = $state<Set<string>>(new Set());
 
   // メンバー追加パネル
   let selectedEvent = $state<CalendarEvent | null>(null);
@@ -42,6 +44,7 @@
       startTime: '',
       endTime: '',
     };
+    selectedMemberIds = new Set();
     showModal = true;
   }
 
@@ -55,7 +58,14 @@
       startTime: ev.startTime ?? '',
       endTime: ev.endTime ?? '',
     };
+    selectedMemberIds = new Set();
     showModal = true;
+  }
+
+  function toggleMember(id: string) {
+    const next = new Set(selectedMemberIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    selectedMemberIds = next;
   }
 
   async function save() {
@@ -76,7 +86,12 @@
         showToast('更新しました', 'success');
       } else {
         const created = await api.events.create(payload);
-        events = [...events, created].sort((a, b) => a.date.localeCompare(b.date));
+        // 選択した従業員を一括追加
+        const memberResults = await Promise.all(
+          [...selectedMemberIds].map(empId => api.events.addMember(created.id, empId))
+        );
+        const withMembers = { ...created, members: memberResults };
+        events = [...events, withMembers].sort((a, b) => a.date.localeCompare(b.date));
         showToast('作成しました', 'success');
       }
       showModal = false;
@@ -204,7 +219,7 @@
                             {#each ev.members as member}
                               {@const emp = $employees.find(e => e.id === member.employeeId)}
                               {#if emp}
-                                {@const typeColor = $employeeTypes.find(t => t.name === emp.type)?.color ?? '#6366f1'}
+                                {@const typeColor = $employeeTypeMap.get(emp.type)?.color ?? '#6366f1'}
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
                                   style="background-color: {typeColor}">
                                   {emp.name}
@@ -261,7 +276,7 @@
               {#each selectedEvent.members as member}
                 {@const emp = $employees.find(e => e.id === member.employeeId)}
                 {#if emp}
-                  {@const memberTypeColor = $employeeTypes.find(t => t.name === emp.type)?.color ?? '#6366f1'}
+                  {@const memberTypeColor = $employeeTypeMap.get(emp.type)?.color ?? '#6366f1'}
                   <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-gray-50">
                     <div class="flex items-center gap-2 min-w-0">
                       <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {memberTypeColor}"></div>
@@ -312,7 +327,7 @@
 {#if showModal}
   <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     role="dialog" aria-modal="true">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
       <h2 class="text-lg font-bold text-gray-900 mb-5">{editTarget ? 'イベントを編集' : 'イベントを追加'}</h2>
       <form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-4">
         <div>
@@ -356,6 +371,38 @@
             {/each}
           </div>
         </div>
+        <!-- 新規作成時のみ：アサイン従業員選択 -->
+        {#if !editTarget && $employees.length > 0}
+          <div>
+            <p class="block text-sm font-medium text-gray-700 mb-1">アサインするスタッフ（任意）</p>
+            <p class="text-xs text-gray-400 mb-2">選択したスタッフがイベント作成と同時に追加されます</p>
+            <div class="border border-gray-200 rounded-xl overflow-hidden max-h-44 overflow-y-auto">
+              {#each $employees as emp}
+                {@const typeColor = $employeeTypeMap.get(emp.type)?.color ?? '#6366f1'}
+                {@const checked = selectedMemberIds.has(emp.id)}
+                <label class="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors
+                  {checked ? 'bg-indigo-50' : ''} border-b border-gray-100 last:border-b-0">
+                  <input type="checkbox" checked={checked}
+                    onchange={() => toggleMember(emp.id)}
+                    class="w-4 h-4 rounded accent-indigo-600 cursor-pointer"/>
+                  <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {typeColor}"></div>
+                  <div class="min-w-0 flex-1">
+                    <span class="text-sm font-medium text-gray-900">{emp.name}</span>
+                    {#if emp.reading}
+                      <span class="text-xs text-gray-400 ml-1.5">{emp.reading}</span>
+                    {/if}
+                  </div>
+                  <span class="text-xs px-2 py-0.5 rounded-full text-white flex-shrink-0"
+                    style="background-color: {typeColor}">{emp.type || '未設定'}</span>
+                </label>
+              {/each}
+            </div>
+            {#if selectedMemberIds.size > 0}
+              <p class="text-xs text-indigo-600 mt-1.5 font-medium">{selectedMemberIds.size}名を選択中</p>
+            {/if}
+          </div>
+        {/if}
+
         <div class="flex gap-3 pt-2">
           <button type="button" onclick={() => showModal = false}
             class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">キャンセル</button>
