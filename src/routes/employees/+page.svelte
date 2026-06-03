@@ -11,7 +11,7 @@
   };
   const PRIORITY_ORDER: Record<EmployeePriority, number> = { high: 0, medium: 1, low: 2 };
 
-  let sortKey = $state<'name' | 'reading' | 'type' | 'priority'>('name');
+  let sortKey = $state<'name' | 'type' | 'priority'>('name');
   let sortDir = $state<'asc' | 'desc'>('asc');
 
   function toggleSort(key: typeof sortKey) {
@@ -23,8 +23,7 @@
     return [...$employees].sort((a, b) => {
       let cmp = 0;
       if (sortKey === 'name') cmp = (a.reading ?? a.name).localeCompare(b.reading ?? b.name, 'ja');
-      else if (sortKey === 'reading') cmp = (a.reading ?? a.name).localeCompare(b.reading ?? b.name, 'ja');
-      else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
+else if (sortKey === 'type') cmp = a.type.localeCompare(b.type, 'ja');
       else if (sortKey === 'priority') cmp = PRIORITY_ORDER[(a.priority ?? 'medium') as EmployeePriority] - PRIORITY_ORDER[(b.priority ?? 'medium') as EmployeePriority];
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -98,7 +97,7 @@
         <select id="emp-table-sort" bind:value={sortKey}
           class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400">
           <option value="name">名前順</option>
-          <option value="reading">読み仮名順</option>
+
           <option value="type">種別順</option>
           <option value="priority">優先度順</option>
         </select>
