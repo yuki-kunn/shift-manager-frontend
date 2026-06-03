@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { employees, selectedYear, selectedMonth, showToast, businessHours } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, showToast, businessHours, employeeTypes } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { ShiftRequest } from '$lib/api.js';
-  import { getDaysInMonth, EMPLOYEE_TYPE_LABELS, EMPLOYEE_TYPE_COLORS } from '$lib/utils.js';
+  import { getDaysInMonth } from '$lib/utils.js';
 
   interface DayOfWeekSetting {
     enabled: boolean;
@@ -265,6 +265,7 @@
   {:else}
     {@const emp = $employees.find(e => e.id === selectedEmployeeId)}
     {#if emp}
+      {@const empType = $employeeTypes.find(t => t.name === emp.type)}
       <div class="flex-1 flex overflow-hidden">
 
         <!-- 中: 入力フォーム -->
@@ -272,11 +273,14 @@
 
           <!-- ヘッダー -->
           <div class="flex items-center gap-3">
-            <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {emp.color}"></div>
+            <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {empType?.color ?? emp.color}"></div>
             <h1 class="text-lg font-bold text-gray-900">{emp.name}</h1>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {EMPLOYEE_TYPE_COLORS[emp.type]}">
-              {EMPLOYEE_TYPE_LABELS[emp.type]}
-            </span>
+            {#if empType}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                style="background-color: {empType.color}">
+                {empType.name}
+              </span>
+            {/if}
             {#if (registeredMap.get(emp.id) ?? 0) > 0}
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">登録済</span>
             {/if}
