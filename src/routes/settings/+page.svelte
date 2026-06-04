@@ -1,34 +1,35 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api.js';
-  import type { EmployeeType, BusinessHours } from '$lib/api.js';
-  import { businessHours, employeeTypes, showToast } from '$lib/stores.js';
+  import type { EmployeeType, BusinessHours, FacilitySettings } from '$lib/api.js';
+  import { businessHours, employeeTypes, facilitySettings, showToast } from '$lib/stores.js';
 
   let bh = $state<BusinessHours | null>(null);
   let types = $state<EmployeeType[]>([]);
   let saving = $state(false);
+  let fs = $state<FacilitySettings | null>(null);
+  let savingFs = $state(false);
 
-  // 新規タイプ追加フォーム
   let addingType = $state(false);
   let newTypeName = $state('');
   let newTypeColor = $state('#6366f1');
 
-  // 編集中タイプ
   let editTypeId = $state<string | null>(null);
   let editTypeName = $state('');
   let editTypeColor = $state('');
 
   onMount(async () => {
-    try {
-      const [bhData, typesData] = await Promise.all([
-        api.settings.getBusinessHours(),
-        api.settings.listEmployeeTypes(),
-      ]);
-      bh = bhData;
-      types = typesData;
-      businessHours.set(bhData);
-      employeeTypes.set(typesData);
-    } catch { showToast('データ読み込みに失敗しました', 'error'); }
+    const results = await Promise.allSettled([
+      api.settings.getBusinessHours(),
+      api.settings.listEmployeeTypes(),
+      api.settings.getFacilitySettings(),
+    ]);
+    if (results[0].status === 'fulfilled') { bh = results[0].value; businessHours.set(results[0].value); }
+    else showToast('営業時間の読み込みに失敗しました', 'error');
+    if (results[1].status === 'fulfilled') { types = results[1].value; employeeTypes.set(results[1].value); }
+    else showToast('従業員タイプの読み込みに失敗しました', 'error');
+    if (results[2].status === 'fulfilled') { fs = results[2].value; facilitySettings.set(results[2].value); }
+    else console.error('getFacilitySettings failed:', results[2].reason);
   });
 
   async function saveBh() {
@@ -48,6 +49,23 @@
       showToast('設定を保存しました', 'success');
     } catch { showToast('保存に失敗しました', 'error'); }
     finally { saving = false; }
+  }
+
+  async function saveFs() {
+    if (!fs) return;
+    savingFs = true;
+    try {
+      const updated = await api.settings.updateFacilitySettings({
+        notionEnabled: fs.notionEnabled,
+        notionDatabaseId: fs.notionDatabaseId || null,
+        csvEnabled: fs.csvEnabled,
+        smaregiBusinessId: fs.smaregiBusinessId || null,
+      });
+      fs = updated;
+      facilitySettings.set(updated);
+      showToast('連携設定を保存しました', 'success');
+    } catch { showToast('保存に失敗しました', 'error'); }
+    finally { savingFs = false; }
   }
 
   async function addType() {
@@ -161,15 +179,12 @@
         </button>
       {/if}
     </div>
-
-    <!-- タイプ一覧 -->
     <div class="space-y-2 mb-4">
       {#if types.length === 0}
         <p class="text-sm text-gray-400 py-2">タイプが登録されていません</p>
       {/if}
       {#each types as t}
         {#if editTypeId === t.id}
-          <!-- 編集フォーム -->
           <div class="flex items-center gap-2 p-3 rounded-xl border border-indigo-200 bg-indigo-50">
             <input type="color" bind:value={editTypeColor} class="w-8 h-8 rounded-lg border border-gray-200 cursor-pointer flex-shrink-0"/>
             <input bind:value={editTypeName} type="text" placeholder="タイプ名" class="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
@@ -186,8 +201,6 @@
         {/if}
       {/each}
     </div>
-
-    <!-- 新規追加フォーム -->
     {#if addingType}
       <div class="flex items-center gap-2 p-3 rounded-xl border border-indigo-200 bg-indigo-50">
         <input type="color" bind:value={newTypeColor} class="w-8 h-8 rounded-lg border border-gray-200 cursor-pointer flex-shrink-0"/>
@@ -195,6 +208,92 @@
         <button onclick={addType} class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-all">追加</button>
         <button onclick={() => { addingType = false; newTypeName = ''; newTypeColor = '#6366f1'; }} class="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">キャンセル</button>
       </div>
+    {/if}
+  </div>
+
+  <!-- 連携機能設定 -->
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-lg mb-6">
+    <h2 class="font-semibold text-gray-900 mb-1">連携機能設定</h2>
+    <p class="text-xs text-gray-400 mb-5">各施設固有の連携サービス設定です</p>
+    {#if fs}
+      <div class="space-y-6">
+        <!-- Notion 連携 -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="text-sm font-medium text-gray-800">Notion 転記</p>
+              <p class="text-xs text-gray-400 mt-0.5">シフトを Notion データベースに自動転記します</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={fs.notionEnabled}
+              onclick={() => { if (fs) fs.notionEnabled = !fs.notionEnabled; }}
+              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 {fs.notionEnabled ? 'bg-indigo-600' : 'bg-gray-200'}"
+            >
+              <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {fs.notionEnabled ? 'translate-x-6' : 'translate-x-1'}"></span>
+            </button>
+          </div>
+          {#if fs.notionEnabled}
+            <div>
+              <label for="notion-db-id" class="block text-xs font-medium text-gray-600 mb-1">Notion データベース ID</label>
+              <input
+                id="notion-db-id"
+                bind:value={fs.notionDatabaseId}
+                type="text"
+                placeholder="例: fe0a4a08c38246e6aa7ee55b443e5ad9"
+                class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+              />
+              <p class="text-xs text-gray-400 mt-1">Notion のデータベース URL の末尾 32 文字</p>
+            </div>
+          {/if}
+        </div>
+
+        <hr class="border-gray-100"/>
+
+        <!-- CSV エクスポート -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="text-sm font-medium text-gray-800">CSV エクスポート（Smaregi タイムカード）</p>
+              <p class="text-xs text-gray-400 mt-0.5">シフトを Smaregi タイムカード互換形式でダウンロードできます</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={fs.csvEnabled}
+              onclick={() => { if (fs) fs.csvEnabled = !fs.csvEnabled; }}
+              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 {fs.csvEnabled ? 'bg-indigo-600' : 'bg-gray-200'}"
+            >
+              <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {fs.csvEnabled ? 'translate-x-6' : 'translate-x-1'}"></span>
+            </button>
+          </div>
+          {#if fs.csvEnabled}
+            <div>
+              <label for="smaregi-biz-id" class="block text-xs font-medium text-gray-600 mb-1">Smaregi 事業所 ID</label>
+              <input
+                id="smaregi-biz-id"
+                bind:value={fs.smaregiBusinessId}
+                type="text"
+                placeholder="例: 001"
+                class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p class="text-xs text-gray-400 mt-1">CSV の「事業所ID」列に入る値です</p>
+            </div>
+          {/if}
+        </div>
+
+        <button
+          type="button"
+          onclick={saveFs}
+          disabled={savingFs}
+          class="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-all"
+        >
+          {savingFs ? '保存中...' : '連携設定を保存'}
+        </button>
+      </div>
+    {:else}
+      <p class="text-sm text-gray-400">読み込み中...</p>
     {/if}
   </div>
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { employees, selectedYear, selectedMonth, showToast, employeeTypeMap } from '$lib/stores.js';
+  import { employees, selectedYear, selectedMonth, showToast, employeeTypeMap, facilitySettings, auth } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { Schedule, ScheduleSlot } from '$lib/api.js';
   import { getDaysInMonth, getDateString, calcHours, generateSmaregiCsv, type CsvRow } from '$lib/utils.js';
@@ -171,7 +171,9 @@
     if (!schedule) return;
     exportingNotion = true;
     try {
-      const url = await exportScheduleToNotion(schedule, $employees, $selectedYear, $selectedMonth);
+      const dbId = $facilitySettings?.notionDatabaseId ?? '';
+      if (!dbId) { showToast('Notion データベース ID が設定されていません', 'error'); exportingNotion = false; return; }
+      const url = await exportScheduleToNotion(schedule, $employees, $selectedYear, $selectedMonth, dbId);
       showToast('Notionに転記しました', 'success');
       window.open(url, '_blank');
     } catch (e) {
@@ -183,7 +185,7 @@
 
   function exportToCsv() {
     if (!schedule) return;
-    const facilityId = $auth?.facilityId ?? '';
+    const facilityId = $facilitySettings?.smaregiBusinessId || $auth?.facilityId || '';
     const rows = schedule.slots.map(slot => ({
       employeeId: slot.employeeId,
       facilityId,

@@ -50,6 +50,17 @@ export interface CalendarEvent {
   createdAt: string; updatedAt: string;
   members: EventMember[];
 }
+export interface FacilitySettings {
+  id: string;
+  facilityId: string;
+  notionEnabled: boolean;
+  notionDatabaseId: string | null;
+  csvEnabled: boolean;
+  smaregiBusinessId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const token = getToken();
@@ -111,6 +122,10 @@ export const api = {
       fetchJson<EmployeeType>(`/settings/employee-types/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteEmployeeType: (id: string) =>
       fetchJson<{ success: boolean }>(`/settings/employee-types/${id}`, { method: 'DELETE' }),
+    getFacilitySettings: () =>
+      fetchJson<FacilitySettings>('/settings/facility'),
+    updateFacilitySettings: (data: Partial<FacilitySettings>) =>
+      fetchJson<FacilitySettings>('/settings/facility', { method: 'PUT', body: JSON.stringify(data) }),
   },
   shiftRequests: {
     list: (employeeId: string, year: number, month: number) =>

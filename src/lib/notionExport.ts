@@ -1,8 +1,7 @@
 import type { Schedule, Employee } from './api.js';
 import { BASE, getToken } from './api.js';
 
-// TODO: 本番環境では環境変数（VITE_NOTION_DB_ID 等）から取得するよう変更すること
-const TEST_DB_ID = 'fe0a4a08c38246e6aa7ee55b443e5ad9';
+// Notion データベース ID は施設設定（facilitySettings.notionDatabaseId）から受け取る
 
 async function notionPost(path: string, body: object) {
   const token = getToken();
@@ -33,6 +32,7 @@ export async function exportScheduleToNotion(
   employees: Employee[],
   year: number,
   month: number,
+  databaseId: string,
 ): Promise<string> {
   const empMap = new Map<string, Employee>(employees.map(e => [e.id, e]));
 
@@ -45,7 +45,7 @@ export async function exportScheduleToNotion(
     const timeRange = `${slot.startTime}〜${slot.endTime}`;
 
     await notionPost('/notion/pages', {
-      parent: { database_id: TEST_DB_ID },
+      parent: { database_id: databaseId },
       properties: {
         名前: {
           title: [{ type: 'text', text: { content: emp.name } }],
@@ -66,5 +66,5 @@ export async function exportScheduleToNotion(
     });
   }
 
-  return `https://www.notion.so/${TEST_DB_ID.replace(/-/g, '')}`;
+  return `https://www.notion.so/${databaseId.replace(/-/g, '')}`;
 }

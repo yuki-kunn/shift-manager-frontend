@@ -2,7 +2,7 @@
   import '../app.css';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import Toast from '$lib/components/Toast.svelte';
-  import { employees, businessHours, employeeTypes, auth } from '$lib/stores.js';
+  import { employees, businessHours, employeeTypes, facilitySettings, auth } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
@@ -21,16 +21,20 @@
 
   onMount(async () => {
     if (!$auth || $auth.role !== 'facility') return;
-    try {
-      const [emps, bh, types] = await Promise.all([
-        api.employees.list(),
-        api.settings.getBusinessHours(),
-        api.settings.listEmployeeTypes(),
-      ]);
-      employees.set(emps);
-      businessHours.set(bh);
-      employeeTypes.set(types);
-    } catch (e) { console.error('Init failed:', e); }
+    const results = await Promise.allSettled([
+      api.employees.list(),
+      api.settings.getBusinessHours(),
+      api.settings.listEmployeeTypes(),
+      api.settings.getFacilitySettings(),
+    ]);
+    if (results[0].status === 'fulfilled') employees.set(results[0].value);
+    else console.error('employees.list failed:', results[0].reason);
+    if (results[1].status === 'fulfilled') businessHours.set(results[1].value);
+    else console.error('getBusinessHours failed:', results[1].reason);
+    if (results[2].status === 'fulfilled') employeeTypes.set(results[2].value);
+    else console.error('listEmployeeTypes failed:', results[2].reason);
+    if (results[3].status === 'fulfilled') facilitySettings.set(results[3].value);
+    else console.error('getFacilitySettings failed:', results[3].reason);
   });
 
   let isAppRoute = $derived(!publicRoutes.some(r => $page.url.pathname.startsWith(r)));

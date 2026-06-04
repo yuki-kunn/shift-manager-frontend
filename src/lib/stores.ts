@@ -1,5 +1,5 @@
 import { writable, derived } from 'svelte/store';
-import type { Employee, BusinessHours, EmployeeType } from './api.js';
+import type { Employee, BusinessHours, EmployeeType, FacilitySettings } from './api.js';
 
 function persistedWritable<T>(key: string, initial: T) {
   let parsed: T = initial;
@@ -30,6 +30,7 @@ export function logout() {
 }
 
 export const employees = writable<Employee[]>([]);
+export const facilitySettings = writable<FacilitySettings | null>(null);
 export const businessHours = writable<BusinessHours | null>(null);
 export const employeeTypes = writable<EmployeeType[]>([]);
 /** 従業員種別名 → EmployeeType の Map。linear search の代わりに各ページで利用する */
