@@ -3,9 +3,10 @@
   import { employees, selectedYear, selectedMonth, showToast, employeeTypeMap } from '$lib/stores.js';
   import { api } from '$lib/api.js';
   import type { Schedule, ScheduleSlot } from '$lib/api.js';
-  import { getDaysInMonth, getDateString, calcHours } from '$lib/utils.js';
+  import { getDaysInMonth, getDateString, calcHours, generateSmaregiCsv, type CsvRow } from '$lib/utils.js';
   import { exportScheduleToNotion } from '$lib/notionExport.js';
   import type { CalendarEvent } from '$lib/api.js';
+  import { auth } from '$lib/stores.js';
 
   let schedule = $state<Schedule | null>(null);
   let calendarEvents = $state<CalendarEvent[]>([]);
@@ -179,6 +180,34 @@
       exportingNotion = false;
     }
   }
+
+  function exportToCsv() {
+    if (!schedule) return;
+    const facilityId = $auth?.facilityId ?? '';
+    const rows = schedule.slots.map(slot => ({
+      employeeId: slot.employeeId,
+      facilityId,
+      date: slot.date,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+    }));
+    // 日付→従業員名の順でソート
+    rows.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      const nameA = $employees.find(e => e.id === a.employeeId)?.name ?? '';
+      const nameB = $employees.find(e => e.id === b.employeeId)?.name ?? '';
+      return nameA.localeCompare(nameB, 'ja');
+    });
+    const csv = generateSmaregiCsv(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shift_${$selectedYear}${String($selectedMonth).padStart(2, '0')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('CSVをダウンロードしました', 'success');
+  }
 </script>
 
 <div class="p-8">
@@ -226,6 +255,13 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
           </svg>
           シフト表を印刷
+        </button>
+        <button onclick={exportToCsv}
+          class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all shadow-sm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          CSVエクスポート
         </button>
         <button onclick={exportToNotion} disabled={exportingNotion}
           class="inline-flex items-center gap-2 px-4 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm">
