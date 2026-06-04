@@ -6,7 +6,6 @@
   import { getDaysInMonth, getDateString, calcHours, generateSmaregiCsv, type CsvRow } from '$lib/utils.js';
   import { exportScheduleToNotion } from '$lib/notionExport.js';
   import type { CalendarEvent } from '$lib/api.js';
-  import { auth } from '$lib/stores.js';
 
   let schedule = $state<Schedule | null>(null);
   let calendarEvents = $state<CalendarEvent[]>([]);

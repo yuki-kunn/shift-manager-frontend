@@ -228,6 +228,7 @@
               type="button"
               role="switch"
               aria-checked={fs.notionEnabled}
+              aria-label="Notion 転記のオン/オフ"
               onclick={() => { if (fs) fs.notionEnabled = !fs.notionEnabled; }}
               class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 {fs.notionEnabled ? 'bg-indigo-600' : 'bg-gray-200'}"
             >
@@ -262,6 +263,7 @@
               type="button"
               role="switch"
               aria-checked={fs.csvEnabled}
+              aria-label="CSV エクスポートのオン/オフ"
               onclick={() => { if (fs) fs.csvEnabled = !fs.csvEnabled; }}
               class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 {fs.csvEnabled ? 'bg-indigo-600' : 'bg-gray-200'}"
             >
