@@ -105,16 +105,17 @@
     name: '', reading: null as string | null, type: '', hourlyWage: 1177,
     priority: 'medium' as EmployeePriority,
     incomeLower: null as number | null, incomeUpper: null as number | null,
+    smaregiEmployeeId: null as string | null,
   });
 
   function openAdd() {
     editTarget = null;
-    form = { name: '', reading: null, type: $employeeTypes[0]?.name ?? '', hourlyWage: 1177, priority: 'medium', incomeLower: null, incomeUpper: null };
+    form = { name: '', reading: null, type: $employeeTypes[0]?.name ?? '', hourlyWage: 1177, priority: 'medium', incomeLower: null, incomeUpper: null, smaregiEmployeeId: null };
     showModal = true;
   }
   function openEdit(emp: Employee) {
     editTarget = emp;
-    form = { name: emp.name, reading: emp.reading ?? null, type: emp.type, hourlyWage: emp.hourlyWage, priority: emp.priority ?? 'medium', incomeLower: emp.incomeLower ?? null, incomeUpper: emp.incomeUpper ?? null };
+    form = { name: emp.name, reading: emp.reading ?? null, type: emp.type, hourlyWage: emp.hourlyWage, priority: emp.priority ?? 'medium', incomeLower: emp.incomeLower ?? null, incomeUpper: emp.incomeUpper ?? null, smaregiEmployeeId: emp.smaregiEmployeeId ?? null };
     showModal = true;
   }
   async function save() {
@@ -369,6 +370,16 @@
                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"/>
             </div>
           </div>
+        </div>
+
+        <!-- Smaregi 従業員ID -->
+        <div class="border border-gray-100 rounded-xl p-4 bg-gray-50">
+          <label for="emp-smaregi-id" class="block text-sm font-medium text-gray-700 mb-1">Smaregi 従業員 ID（任意）</label>
+          <input id="emp-smaregi-id"
+            bind:value={form.smaregiEmployeeId}
+            type="text" placeholder="例: 1001"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"/>
+          <p class="text-xs text-gray-400 mt-1">CSV エクスポート時の「従業員ID」列に使用されます。未設定の場合はシステム内部 ID が使われます。</p>
         </div>
 
         <div class="flex gap-3 pt-2">

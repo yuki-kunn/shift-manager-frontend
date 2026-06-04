@@ -23,6 +23,7 @@ export interface Employee {
   priority: EmployeePriority;
   incomeLower: number | null;
   incomeUpper: number | null;
+  smaregiEmployeeId: string | null;
   createdAt: string; updatedAt: string;
 }
 export interface BusinessHours {

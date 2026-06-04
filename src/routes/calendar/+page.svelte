@@ -185,13 +185,16 @@
   function exportToCsv() {
     if (!schedule) return;
     const facilityId = $facilitySettings?.smaregiBusinessId || $auth?.facilityId || '';
-    const rows = schedule.slots.map(slot => ({
-      employeeId: slot.employeeId,
-      facilityId,
-      date: slot.date,
-      startTime: slot.startTime,
-      endTime: slot.endTime,
-    }));
+    const rows = schedule.slots.map(slot => {
+      const emp = $employees.find(e => e.id === slot.employeeId);
+      return {
+        employeeId: emp?.smaregiEmployeeId || slot.employeeId,
+        facilityId,
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      };
+    });
     // 日付→従業員名の順でソート
     rows.sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
