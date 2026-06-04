@@ -257,7 +257,7 @@
           </svg>
           シフト表を印刷
         </button>
-        {#if $facilitySettings?.csvEnabled}
+        {#if $facilitySettings?.csvEnabled && $facilitySettings?.smaregiBusinessId}
           <button onclick={exportToCsv}
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all shadow-sm">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -266,7 +266,7 @@
             CSVエクスポート
           </button>
         {/if}
-        {#if $facilitySettings?.notionEnabled}
+        {#if $facilitySettings?.notionEnabled && $facilitySettings?.notionDatabaseId}
           <button onclick={exportToNotion} disabled={exportingNotion}
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm">
             {#if exportingNotion}

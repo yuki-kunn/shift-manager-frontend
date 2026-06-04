@@ -285,11 +285,17 @@
           {/if}
         </div>
 
+        {#if fs.notionEnabled && !fs.notionDatabaseId}
+          <p class="text-xs text-red-500 -mt-2">Notion を有効にする場合はデータベース ID を入力してください</p>
+        {/if}
+        {#if fs.csvEnabled && !fs.smaregiBusinessId}
+          <p class="text-xs text-red-500 -mt-2">CSV エクスポートを有効にする場合は事業所 ID を入力してください</p>
+        {/if}
         <button
           type="button"
           onclick={saveFs}
-          disabled={savingFs}
-          class="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-all"
+          disabled={savingFs || (fs.notionEnabled && !fs.notionDatabaseId) || (fs.csvEnabled && !fs.smaregiBusinessId)}
+          class="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
         >
           {savingFs ? '保存中...' : '連携設定を保存'}
         </button>
