@@ -257,28 +257,32 @@
           </svg>
           シフト表を印刷
         </button>
-        <button onclick={exportToCsv}
-          class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all shadow-sm">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
-          CSVエクスポート
-        </button>
-        <button onclick={exportToNotion} disabled={exportingNotion}
-          class="inline-flex items-center gap-2 px-4 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm">
-          {#if exportingNotion}
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        {#if $facilitySettings?.csvEnabled}
+          <button onclick={exportToCsv}
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all shadow-sm">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
             </svg>
-            転記中...
-          {:else}
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 4h6v6H4V4zm0 10h6v6H4v-6zm10-10h6v6h-6V4zm0 10h6v6h-6v-6z"/>
-            </svg>
-            Notionに転記
-          {/if}
-        </button>
+            CSVエクスポート
+          </button>
+        {/if}
+        {#if $facilitySettings?.notionEnabled}
+          <button onclick={exportToNotion} disabled={exportingNotion}
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm">
+            {#if exportingNotion}
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+              転記中...
+            {:else}
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4 4h6v6H4V4zm0 10h6v6H4v-6zm10-10h6v6h-6V4zm0 10h6v6h-6v-6z"/>
+              </svg>
+              Notionに転記
+            {/if}
+          </button>
+        {/if}
       {/if}
     </div>
   </div>
